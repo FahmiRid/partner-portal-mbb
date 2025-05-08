@@ -1,0 +1,50 @@
+.loginHeader {
+  background: #fecf08;
+  padding: 1.2rem 1.2rem;
+  width: 100%;
+
+  .loginLogo {
+    height: 1.8rem;
+  }
+}
+
+.loginWrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  width: auto;
+  height: 59em;
+  vertical-align: center;
+  justify-content: center;
+  background: #f8faff;
+
+  .secondBlock {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    width: 40%;
+    height: 100%;
+    vertical-align: center;
+    justify-content: center;
+    background: #f8faff;
+  }
+
+  .appTitle {
+    font-family: Bold, sans-serif;
+    font-size: 24px;
+    margin-bottom: 2.5rem;
+    color: #121f26;
+  }
+
+  .usageWarning {
+    color: red;
+    max-width: 47rem;
+    padding: 0px 3rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    bottom: 9em;
+  }
+
+}
