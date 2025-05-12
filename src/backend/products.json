@@ -1,0 +1,38 @@
+[
+    {
+      "id": 1,
+      "productName": "Nabati Big",
+      "quantity": "1",
+      "totalUnit": "0.64",
+      "sku": "PA001"
+    },
+    {
+      "id": 2,
+      "productName": "Nabati Stick",
+      "quantity": "1",
+      "totalUnit": "0.24",
+      "sku": "PA002"
+    },
+    {
+      "id": 3,
+      "productName": "LED Strip",
+      "quantity": "1",
+      "totalUnit": "0.43",
+      "sku": "PA003"
+    },
+    {
+      "id": 4,
+      "productName": "Apollo Wafer Cake",
+      "quantity": "1",
+      "totalUnit": "0.20",
+      "sku": "PA004"
+    },
+    {
+      "id": 5,
+      "productName": "Small Bear",
+      "quantity": "1",
+      "totalUnit": "0.83",
+      "sku": "PA005"
+    }
+  ]
+  

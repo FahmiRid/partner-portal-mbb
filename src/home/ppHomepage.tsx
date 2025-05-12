@@ -253,9 +253,9 @@ export default function PPHomepage() {
                                             Last 6 Months
                                         </button>
                                         <ul className="dropdown-menu dropdown-menu-end">
-                                            <li><a className="dropdown-item">Last 3 Months</a></li>
-                                            <li><a className="dropdown-item">Last 6 Months</a></li>
-                                            <li><a className="dropdown-item">Last Year</a></li>
+                                            <li><a href='/' className="dropdown-item">Last 3 Months</a></li>
+                                            <li><a href='/' className="dropdown-item">Last 6 Months</a></li>
+                                            <li><a href='/' className="dropdown-item">Last Year</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -471,9 +471,9 @@ export default function PPHomepage() {
                                             Last 6 Months
                                         </button>
                                         <ul className="dropdown-menu dropdown-menu-end">
-                                            <li><a className="dropdown-item">Last 3 Months</a></li>
-                                            <li><a className="dropdown-item">Last 6 Months</a></li>
-                                            <li><a className="dropdown-item">Last Year</a></li>
+                                            <li><a href='/' className="dropdown-item">Last 3 Months</a></li>
+                                            <li><a href='/' className="dropdown-item">Last 6 Months</a></li>
+                                            <li><a href='/' className="dropdown-item">Last Year</a></li>
                                         </ul>
                                     </div>
                                 </div>
