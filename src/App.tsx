@@ -6,6 +6,9 @@ import PPHomepage from './home/ppHomepage';
 import Navbar from './navbar/navbar';
 import ProductList from './product/productList';
 import AddProduct from './product/addProduct';
+import Stock from './product/stock';
+import AddStock from './product/addStock';
+import EditStock from './product/editStock';
 
 function App() {
 
@@ -27,7 +30,10 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/home" element={<PPHomepage />} />
         <Route path="/product-list" element={<ProductList />} />
+        <Route path="/stock-list" element={<Stock />} />
+        <Route path="/add-stock" element={<AddStock />} />
         <Route path="/add-product" element={<AddProduct />} />
+        <Route path="/edit-stock/:id" element={<EditStock />} />
         <Route path="/app" element={<App />} />
       </Routes>
     </BrowserRouter>

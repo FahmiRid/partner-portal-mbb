@@ -1,55 +1,92 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput, ppGlobalInputDisabled, ppH1Custom2, ppMediumMuteText } from '../stylesStore/stylesGlobal';
-import './styles/addProduct.scss'
-import { useProducts } from '../hooks/useProducts';
+import './styles/addProduct.scss';
+import supabase from '../mocks/supabase';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-// Define the type for the product items returned from the API
-interface Product {
-  id: number;
-  itemName: string;
-}
-
-interface ProductFormData {
-  productName: string;
-  quantity: any;
-  price: any;
-  totalUnit: number;
+interface stockFormData {
+  item_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
   sku: string;
-  photo: File | null;
+  // photo: File | null;
   item: string;
 }
 
-export default function AddProduct() {
-  const [formData, setFormData] = useState<ProductFormData>({
-    productName: '',
+export default function AddStock() {
+  const [formData, setFormData] = useState<stockFormData>({
+    item_name: '',
     quantity: 1,
-    price: 0,
-    totalUnit: 0,
+    unit_price: 0,
+    total_price: 0,
     sku: '',
-    photo: null,
+    // photo: null,
     item: '',
   });
 
-  const [errors, setErrors] = useState<Partial<ProductFormData>>({});
+  const [errors, setErrors] = useState<Partial<stockFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  // Properly type the result from useProducts hook
-  const { data, error, isLoading } = useProducts();
+  // Access the QueryClient instance
+  const queryClient = useQueryClient();
 
-  // Calculate total unit when quantity or price changes
+  // Create mutation for adding stock to Supabase
+  const addStockMutation = useMutation({
+    mutationFn: async (newStock: Omit<stockFormData, 'item'>) => {
+      const { data, error } = await supabase
+        .from('stock')
+        .insert([newStock])
+        .select();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return data;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch stocks list query
+      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      setShowSuccess(true);
+      
+      // Reset form after showing success message
+      setTimeout(() => {
+        setFormData({
+          item_name: '',
+          quantity: 1,
+          unit_price: 0,
+          total_price: 0,
+          sku: '',
+          item: '',
+        });
+        setPhotoPreview(null);
+        setShowSuccess(false);
+      }, 3000);
+    },
+    onError: (error) => {
+      console.error('Error adding stock:', error);
+      alert('Failed to add stock. Please try again.');
+    },
+    onSettled: () => {
+      setIsSubmitting(false);
+    }
+  });
+
+  // Calculate total price when quantity or unit_price changes
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      totalUnit: Number((prev.quantity * prev.price).toFixed(2))
+      total_price: Number((prev.quantity * prev.unit_price).toFixed(2))
     }));
-  }, [formData.quantity, formData.price]);
+  }, [formData.quantity, formData.unit_price]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    if (name === 'quantity' || name === 'price') {
+    if (name === 'quantity' || name === 'unit_price') {
       const numValue = value === '' ? 0 : Number(value);
       setFormData({
         ...formData,
@@ -72,23 +109,23 @@ export default function AddProduct() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<ProductFormData> = {};
+    const newErrors: Partial<stockFormData> = {};
     let isValid = true;
 
-    if (!formData.productName.trim()) {
-      newErrors.productName = 'Product name is required';
+    if (!formData.item_name.trim()) {
+      newErrors.item_name = 'Product name is required';
       isValid = false;
     }
 
-    if (formData.quantity <= 0) {
-      newErrors.quantity = 'Quantity must be greater than 0';
-      isValid = false;
-    }
+    // if (formData.quantity <= 0) {
+    //   newErrors.quantity = 'Quantity must be greater than 0';
+    //   isValid = false;
+    // }
 
-    if (formData.price <= 0) {
-      newErrors.price = 'Price must be greater than 0';
-      isValid = false;
-    }
+    // if (formData.unit_price <= 0) {
+    //   newErrors.unit_price = 'Price must be greater than 0';
+    //   isValid = false;
+    // }
 
     if (!formData.sku.trim()) {
       newErrors.sku = 'SKU is required';
@@ -104,36 +141,18 @@ export default function AddProduct() {
 
     if (validateForm()) {
       setIsSubmitting(true);
-
-      // Simulating API call
-      setTimeout(() => {
-        console.log('Product submitted:', formData);
-        setIsSubmitting(false);
-        setShowSuccess(true);
-
-        // Reset form after showing success message
-        setTimeout(() => {
-          setFormData({
-            productName: '',
-            quantity: 1,
-            price: 0,
-            totalUnit: 0.00,
-            sku: '',
-            photo: null,
-            item: '',
-          });
-          setPhotoPreview(null);
-          setShowSuccess(false);
-        }, 3000);
-      }, 1000);
-    }
-  };
-
-  const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setFormData((prev) => ({ ...prev, photo: file }));
-      setPhotoPreview(URL.createObjectURL(file));
+      
+      // Prepare the data for Supabase (exclude the 'item' field as it's not in the DB table)
+      const stockData = {
+        item_name: formData.item_name,
+        quantity: formData.quantity,
+        unit_price: formData.unit_price,
+        total_price: formData.total_price,
+        sku: formData.sku
+      };
+      
+      // Execute the mutation
+      addStockMutation.mutate(stockData);
     }
   };
 
@@ -142,7 +161,7 @@ export default function AddProduct() {
       <div className="container">
         <div className="row mb-4">
           <div className="col">
-            <h1 className={ppH1Custom2}>Add Product</h1>
+            <h1 className={ppH1Custom2}>Add Stock</h1>
             <p className={ppMediumMuteText}>Add a new product to your inventory</p>
           </div>
         </div>
@@ -160,55 +179,17 @@ export default function AddProduct() {
               <div className={ppCardMedium}>
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
-                    <label htmlFor="photo" className="form-label">Product Photo</label>
-                    <input
-                      type="file"
-                      className={ppGlobalInput}
-                      id="photo"
-                      name="photo"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="productName" className="form-label">Product Name</label>
+                    <label htmlFor="item_name" className="form-label">Item Name</label>
                     <input
                       type="text"
-                      className={`${ppGlobalInput} ${errors.productName ? 'is-invalid' : ''}`}
-                      id="productName"
-                      name="productName"
+                      className={`${ppGlobalInput} ${errors.item_name ? 'is-invalid' : ''}`}
+                      id="item_name"
+                      name="item_name"
                       placeholder="Enter product name"
-                      value={formData.productName}
+                      value={formData.item_name}
                       onChange={handleInputChange}
                     />
-                    {errors.productName && <div className="invalid-feedback">{errors.productName}</div>}
-                  </div>
-
-                  {/* Conditional rendering based on API data status */}
-                  <div className="mb-3">
-                    <label htmlFor="item" className="form-label">Item</label>
-                    {isLoading ? (
-                      <div className="spinner-border spinner-border-sm text-primary" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                    ) : error ? (
-                      <div className="alert alert-danger">Failed to load items. Please try again.</div>
-                    ) : (
-                      <select
-                        className={`form-select form-select-lg bg-light text-dark ${ppGlobalInput}`}
-                        id="item"
-                        name="item"
-                        value={formData.item}
-                        onChange={handleSelectChange}
-                      >
-                        <>
-                          <option value="">Select an item</option>
-                          {data && Array.isArray(data) && data.map((item: Product) => (
-                            <option key={item.id} value={item.itemName}>{item.itemName}</option>
-                          ))}
-                        </>
-                      </select>
-                    )}
+                    {errors.item_name && <div className="invalid-feedback">{errors.item_name}</div>}
                   </div>
 
                   <div className="row mb-3">
@@ -228,32 +209,32 @@ export default function AddProduct() {
                     </div>
 
                     <div className="col-md-6">
-                      <label htmlFor="price" className="form-label">Price (RM)</label>
+                      <label htmlFor="unit_price" className="form-label">Price (RM)</label>
                       <div className="input-group">
                         <input
                           type="number"
                           step="0.01"
-                          className={`${ppGlobalInput} ${errors.price ? 'is-invalid' : ''}`}
-                          id="price"
-                          name="price"
+                          className={`${ppGlobalInput} ${errors.unit_price ? 'is-invalid' : ''}`}
+                          id="unit_price"
+                          name="unit_price"
                           placeholder="0.00"
-                          value={formData.price || ''}
+                          value={formData.unit_price || ''}
                           onChange={handleInputChange}
                         />
-                        {errors.price && <div className="invalid-feedback">{errors.price}</div>}
+                        {errors.unit_price && <div className="invalid-feedback">{errors.unit_price}</div>}
                       </div>
                     </div>
                   </div>
 
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label htmlFor="totalUnit" className="form-label">Total Unit</label>
+                      <label htmlFor="total_price" className="form-label">Total Unit</label>
                       <div className="input-group">
                         <input
                           type="text"
                           className={ppGlobalInputDisabled}
-                          id="totalUnit"
-                          value={formData.totalUnit.toFixed(2)}
+                          id="total_price"
+                          value={formData.total_price.toFixed(2)}
                           readOnly
                         />
                       </div>
@@ -273,6 +254,23 @@ export default function AddProduct() {
                       />
                       {errors.sku && <div className="invalid-feedback">{errors.sku}</div>}
                     </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label htmlFor="item" className="form-label">Item Category</label>
+                    <select
+                      className={ppGlobalInput}
+                      id="item"
+                      name="item"
+                      value={formData.item}
+                      onChange={handleSelectChange}
+                    >
+                      <option value="">Select category</option>
+                      <option value="Electronics">Electronics</option>
+                      <option value="Clothing">Clothing</option>
+                      <option value="Food">Food</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
 
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
@@ -308,7 +306,7 @@ export default function AddProduct() {
                 )}
                 <div className="mb-3">
                   <small className="text-muted">Product Name</small>
-                  <p className="mb-1 fw-bold">{formData.productName || '---'}</p>
+                  <p className="mb-1 fw-bold">{formData.item_name || '---'}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Item</small>
@@ -320,11 +318,11 @@ export default function AddProduct() {
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Price</small>
-                  <p className="mb-1 fw-bold">RM{formData.price.toFixed(2)}</p>
+                  <p className="mb-1 fw-bold">RM{formData.unit_price.toFixed(2)}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Total Unit</small>
-                  <p className="mb-1 fw-bold">RM{formData.totalUnit.toFixed(2)}</p>
+                  <p className="mb-1 fw-bold">RM{formData.total_price.toFixed(2)}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">SKU</small>

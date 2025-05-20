@@ -21,6 +21,7 @@ import {
   faUsers,
   faBars
 } from '@fortawesome/free-solid-svg-icons';
+import './navbar.scss'
 
 interface NavItem {
   id: number;
@@ -49,7 +50,7 @@ const OffcanvasNavbar: React.FC = () => {
       icon: faTools,
       children: [
         { id: 31, title: 'Manage Product', link: '/product-list', icon: '' },
-        { id: 32, title: 'Manage Stock', link: '#', icon: '' },
+        { id: 32, title: 'Manage Stock', link: '/stock-list', icon: '' },
         { id: 33, title: 'Manage Order', link: '#', icon: '' },
       ],
     },
@@ -151,15 +152,15 @@ const OffcanvasNavbar: React.FC = () => {
                           </span>
                         }
                         id="nav-dropdown"
-                        className="text-light py-3 px-4 rounded-3"
+                        className="text-light py-3 px-4 rounded-3 custom-gap"
                         style={{ 
                           background: item.active ? 'rgba(255,255,255,0.1)' : '',
-                          transition: 'all 0.3s ease'
+                          transition: 'all 0.3s ease',
                         }}
                         menuVariant="dark"
                       >
                         {item.children.map((child) => (
-                          <NavDropdown.Item key={child.id} href={child.link} style={{ backgroundColor: 'transparent' }}>
+                          <NavDropdown.Item key={child.id} className="mt-3 mb-3" href={child.link} style={{ backgroundColor: 'transparent' }}>
                             <FontAwesomeIcon icon={child.icon} className="me-3" /> {child.title}
                           </NavDropdown.Item>
                         ))}
@@ -174,6 +175,7 @@ const OffcanvasNavbar: React.FC = () => {
                         style={{ 
                           background: item.active ? 'rgba(255,255,255,0.1)' : '',
                           transition: 'all 0.3s ease'
+                          
                         }}
                       >
                         <FontAwesomeIcon icon={item.icon} className="me-3" /> {item.title}

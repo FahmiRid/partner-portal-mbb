@@ -15,3 +15,9 @@
  .active-link {
      border-left: 3px solid #ff4e50;
  }
+
+ .custom-gap {
+     display: flex;
+     flex-direction: column;
+     gap: 1em;
+ }

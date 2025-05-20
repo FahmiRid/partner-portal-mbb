@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import './styles/productList.scss';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, Plus, ArrowUpDown, Pencil, Trash } from 'lucide-react';
+import { Search, Plus, ArrowUpDown, Pencil, Trash } from 'lucide-react';
 import { ppBadgeBlue, ppBadgeGrey, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
 import NotFoundPage from '../heroSection/notFoundPage';
 
@@ -16,7 +16,7 @@ interface Product {
 
 // API functions
 const fetchProducts = async (): Promise<Product[]> => {
-  const response = await fetch('http://localhost:3001/api/products');
+  const response = await fetch('http://localhost:3003/api/products');
   if (!response.ok) {
     throw new Error('Network response was not ok');
   }
@@ -24,8 +24,7 @@ const fetchProducts = async (): Promise<Product[]> => {
 };
 
 const updateProductsOrder = async (products: Product[]): Promise<Product[]> => {
-  // This would typically be a PUT or PATCH request to your API
-  // For now, we'll just return the reordered products
+
   return products;
 };
 
@@ -174,25 +173,16 @@ export default function ProductList() {
         <div className="row mb-4">
           <div className="col-md-6">
             <div className="input-group">
-              <span className="input-group-text bg-white border-end-0">
+              <span className="input-group-text bg-white border-end-0 rounded-start-4">
                 <Search size={18} className="text-muted" />
               </span>
               <input
                 type="text"
-                className="form-control border-start-0 shadow-none"
+                className="form-control border-start-0 shadow-none rounded-end-4"
                 placeholder="Search by name, quantity, SKU..."
                 value={searchTerm}
                 onChange={handleSearch}
               />
-              {searchTerm && (
-                <button
-                  className="btn btn-outline-secondary border-start-0"
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                >
-                  <X size={18} />
-                </button>
-              )}
             </div>
             <div className={ppSmallMuteText}>
               {filteredProducts.length} of {products.length} products found
