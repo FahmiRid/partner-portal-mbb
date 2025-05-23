@@ -42,6 +42,98 @@ interface ProductFormData {
   selectedItems: SelectedItem[];
 }
 
+const addProductWithItems = async (product: Omit<ProductListPackage, 'id'>, selectedItems: SelectedItem[]) => {
+  // Start a transaction
+  const { data: productData, error: productError } = await supabase
+    .from("products")
+    .insert(product)
+    .select()
+    .single();
+
+  if (productError) {
+    throw new Error(productError.message);
+  }
+
+  // Insert product items
+  const productItems = selectedItems.map(item => ({
+    product_id: productData.id,
+    stock_item_id: item.id,
+    quantity_used: item.quantity_used,
+    unit_price: item.unit_price,
+    total_cost: item.total_cost
+  }));
+
+  const { error: itemsError } = await supabase
+    .from("product_items")
+    .insert(productItems);
+
+  if (itemsError) {
+    // Rollback - delete the product if items insertion fails
+    await supabase.from("products").delete().eq("id", productData.id);
+    throw new Error(itemsError.message);
+  }
+
+  return productData;
+};
+
+// Fetch products with their stock items
+export const fetchProductsWithItems = async () => {
+  const { data, error } = await supabase
+    .from("products")
+    .select(`
+      *,
+      product_items (
+        id,
+        quantity_used,
+        unit_price,
+        total_cost,
+        stock_item:stock_item_id (
+          id,
+          item_name,
+          sku,
+          unit_price,
+          quantity
+        )
+      )
+    `);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
+
+// Alternative: Fetch single product with items
+const fetchProductWithItems = async (productId: number) => {
+  const { data, error } = await supabase
+    .from("products")
+    .select(`
+      *,
+      product_items (
+        id,
+        quantity_used,
+        unit_price,
+        total_cost,
+        stock_item:stock_item_id (
+          id,
+          item_name,
+          sku,
+          unit_price,
+          quantity
+        )
+      )
+    `)
+    .eq("id", productId)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
+
 // API functions
 const addProduct = async (product: Omit<ProductListPackage, 'item'>) => {
   const { data, error } = await supabase.from("products").insert(product);
@@ -50,6 +142,7 @@ const addProduct = async (product: Omit<ProductListPackage, 'item'>) => {
   }
   return data;
 };
+
 export default function AddProduct() {
   const queryClient = useQueryClient();
 
@@ -68,6 +161,8 @@ export default function AddProduct() {
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showItemSelector, setShowItemSelector] = useState<boolean>(false);
+  const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Fetch stock items
   const { data: stockItems = [], isLoading } = useQuery({
@@ -77,9 +172,11 @@ export default function AddProduct() {
 
   // Add product mutation
   const addProductMutation = useMutation({
-    mutationFn: addProduct,
+    mutationFn: ({ product, selectedItems }: { product: Omit<ProductListPackage, 'id'>, selectedItems: SelectedItem[] }) => 
+      addProductWithItems(product, selectedItems),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['productsWithItems'] });
       setIsSubmitting(false);
       setShowSuccess(true);
 
@@ -135,23 +232,74 @@ export default function AddProduct() {
     }
   };
 
+  const handleQuantityChange = (stockItemId: number, quantity: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [stockItemId]: quantity
+    }));
+  };
+
   const handleAddItem = (stockItem: Product, quantity: number) => {
+    // Check if item is already selected
+    const existingItemIndex = formData.selectedItems.findIndex(item => item.id === stockItem.id);
+    
     const unitPrice = parseFloat(stockItem.unit_price);
     const totalCost = unitPrice * quantity;
 
-    const newItem: SelectedItem = {
-      id: stockItem.id,
-      item_name: stockItem.item_name,
-      unit_price: unitPrice,
-      quantity_used: quantity,
-      total_cost: totalCost
-    };
+    if (existingItemIndex >= 0) {
+      // Update existing item
+      const updatedItems = [...formData.selectedItems];
+      updatedItems[existingItemIndex] = {
+        ...updatedItems[existingItemIndex],
+        quantity_used: updatedItems[existingItemIndex].quantity_used + quantity,
+        total_cost: updatedItems[existingItemIndex].total_cost + totalCost
+      };
+      
+      setFormData(prev => ({
+        ...prev,
+        selectedItems: updatedItems
+      }));
+    } else {
+      // Add new item
+      const newItem: SelectedItem = {
+        id: stockItem.id,
+        item_name: stockItem.item_name,
+        unit_price: unitPrice,
+        quantity_used: quantity,
+        total_cost: totalCost
+      };
 
-    setFormData(prev => ({
+      setFormData(prev => ({
+        ...prev,
+        selectedItems: [...prev.selectedItems, newItem]
+      }));
+    }
+
+    // Reset quantity for this item
+    setQuantities(prev => ({
       ...prev,
-      selectedItems: [...prev.selectedItems, newItem]
+      [stockItem.id]: 0
     }));
-    setShowItemSelector(false);
+  };
+
+  const handleAddAllSelectedItems = () => {
+    let addedCount = 0;
+    
+    Object.entries(quantities).forEach(([stockItemId, quantity]) => {
+      if (quantity > 0) {
+        const stockItem = stockItems.find(item => item.id === parseInt(stockItemId));
+        if (stockItem && quantity <= stockItem.quantity) {
+          handleAddItem(stockItem, quantity);
+          addedCount++;
+        }
+      }
+    });
+
+    if (addedCount > 0) {
+      alert(`${addedCount} item(s) added successfully!`);
+    } else {
+      alert('Please select quantities for items you want to add.');
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -175,11 +323,6 @@ export default function AddProduct() {
       isValid = false;
     }
 
-    // if (formData.sellingPrice <= 0) {
-    //   newErrors.sellingPrice = 'Selling price must be greater than 0';
-    //   isValid = false;
-    // }
-
     setErrors(newErrors);
     return isValid;
   };
@@ -196,19 +339,31 @@ export default function AddProduct() {
         profit: formData.profit
       };
 
-      addProductMutation.mutate(productData);
+      addProductMutation.mutate({
+        product: productData, 
+        selectedItems: formData.selectedItems 
+      });
     }
   };
 
-  // const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files.length > 0) {
-  //     const file = e.target.files[0];
-  //     setFormData((prev) => ({ ...prev, photo: file }));
-  //     setPhotoPreview(URL.createObjectURL(file));
-  //   }
-  // };
+  const getAvailableQuantity = (stockItem: Product) => {
+    const selectedItem = formData.selectedItems.find(item => item.id === stockItem.id);
+    const usedQuantity = selectedItem ? selectedItem.quantity_used : 0;
+    return stockItem.quantity - usedQuantity;
+  };
+
+  const isItemAlreadySelected = (stockItemId: number) => {
+    return formData.selectedItems.some(item => item.id === stockItemId);
+  };
+
+  // Filter stock items based on search term
+  const filteredStockItems = stockItems.filter(item =>
+    item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
+    <>
     <div className="container-fluid py-4 bg-light">
       <div className="container">
         <div className="row mb-4">
@@ -278,9 +433,13 @@ export default function AddProduct() {
                       <button
                         type="button"
                         className="btn btn-primary btn-sm mt-2"
-                        onClick={() => setShowItemSelector(true)}
+                        onClick={() => {
+                          setShowItemSelector(true);
+                          setQuantities({});
+                          setSearchTerm('');
+                        }}
                       >
-                        Add Item
+                        Add Items
                       </button>
                     </div>
                   </div>
@@ -343,19 +502,6 @@ export default function AddProduct() {
                       <small className="text-muted">Automatically calculated</small>
                     </div>
                   </div>
-
-                  {/* Photo Upload */}
-                  {/* <div className="mb-3">
-                    <label htmlFor="photo" className="form-label">Product Photo (Optional)</label>
-                    <input
-                      type="file"
-                      className={ppGlobalInput}
-                      id="photo"
-                      name="photo"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                    />
-                  </div> */}
 
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <button type="button" className={ppButtonCancel}>Cancel</button>
@@ -433,10 +579,10 @@ export default function AddProduct() {
         </div>
       </div>
 
-      {/* Item Selector Modal */}
+      {/* Enhanced Item Selector Modal */}
       {showItemSelector && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
+          <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title">Select Items from Stock</h5>
@@ -447,6 +593,40 @@ export default function AddProduct() {
                 ></button>
               </div>
               <div className="modal-body">
+                <div className="alert alert-info">
+                  <strong>Tip:</strong> Set quantities for multiple items and click "Add All Selected Items" to add them all at once, or add them individually.
+                </div>
+                
+                {/* Search Bar */}
+                <div className="mb-4">
+                  <div className="input-group">
+                    <span className="input-group-text">
+                      <i className="fas fa-search"></i>🔍
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search by item name or SKU..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button
+                        className="btn btn-outline-secondary"
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {searchTerm && (
+                    <small className="text-muted">
+                      Showing {filteredStockItems.length} of {stockItems.length} items
+                    </small>
+                  )}
+                </div>
+                
                 {isLoading ? (
                   <div className="text-center py-4">
                     <div className="spinner-border text-primary" role="status">
@@ -455,63 +635,105 @@ export default function AddProduct() {
                     <p className="mt-2">Loading stock items...</p>
                   </div>
                 ) : (
-                  <div className="row">
-                    {stockItems.map((stockItem) => (
-                      <div key={stockItem.id} className="col-md-6 mb-3">
-                        <div className="card h-100 shadow-sm">
-                          <div className="card-body">
-                            <h6 className="card-title text-primary">{stockItem.item_name}</h6>
-                            <div className="mb-3">
-                              <small className="text-muted d-block">
-                                <strong>SKU:</strong> {stockItem.sku}
-                              </small>
-                              <small className="text-muted d-block">
-                                <strong>Unit Price:</strong> RM{stockItem.unit_price}
-                              </small>
-                              <small className="text-muted d-block">
-                                <strong>Available:</strong> {stockItem.quantity} units
-                              </small>
-                            </div>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Quantity"
-                                min="1"
-                                max={stockItem.quantity}
-                                id={`qty-${stockItem.id}`}
-                              />
-                              <button
-                                className="btn btn-outline-primary"
-                                type="button"
-                                onClick={() => {
-                                  const qtyInput = document.getElementById(`qty-${stockItem.id}`) as HTMLInputElement;
-                                  const quantity = parseInt(qtyInput.value);
-                                  if (quantity > 0 && quantity <= stockItem.quantity) {
-                                    handleAddItem(stockItem, quantity);
-                                    qtyInput.value = '';
-                                  } else {
-                                    alert('Please enter a valid quantity');
-                                  }
-                                }}
-                              >
-                                Add
-                              </button>
-                            </div>
-                          </div>
+                  <div>
+                    {filteredStockItems.length === 0 ? (
+                      <div className="text-center py-4">
+                        <div className="text-muted">
+                          <h5>No items found</h5>
+                          <p>Try adjusting your search terms or clear the search to see all items.</p>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="row">
+                        {filteredStockItems.map((stockItem) => {
+                        const availableQty = getAvailableQuantity(stockItem);
+                        const isSelected = isItemAlreadySelected(stockItem.id);
+                        
+                        return (
+                          <div key={stockItem.id} className="col-lg-6 col-xl-4 mb-3">
+                            <div className={`card h-100 shadow-sm ${isSelected ? 'border-success' : ''}`}>
+                              <div className="card-body">
+                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                  <h6 className="card-title text-primary mb-0">{stockItem.item_name}</h6>
+                                  {isSelected && (
+                                    <span className="badge bg-success">Selected</span>
+                                  )}
+                                </div>
+                                <div className="mb-3">
+                                  <small className="text-muted d-block">
+                                    <strong>SKU:</strong> {stockItem.sku}
+                                  </small>
+                                  <small className="text-muted d-block">
+                                    <strong>Unit Price:</strong> RM{stockItem.unit_price}
+                                  </small>
+                                  <small className="text-muted d-block">
+                                    <strong>Available:</strong> {availableQty} units
+                                    {isSelected && ` (${stockItem.quantity - availableQty} already selected)`}
+                                  </small>
+                                </div>
+                                
+                                <div className="row g-2">
+                                  <div className="col-8">
+                                    <input
+                                      type="number"
+                                      className="form-control form-control-sm"
+                                      placeholder="Qty"
+                                      min="0"
+                                      max={availableQty}
+                                      value={quantities[stockItem.id] || ''}
+                                      onChange={(e) => handleQuantityChange(stockItem.id, parseInt(e.target.value) || 0)}
+                                      disabled={availableQty === 0}
+                                    />
+                                  </div>
+                                  <div className="col-4">
+                                    <button
+                                      className="btn btn-outline-primary btn-sm w-100"
+                                      type="button"
+                                      disabled={!quantities[stockItem.id] || quantities[stockItem.id] <= 0 || quantities[stockItem.id] > availableQty}
+                                      onClick={() => {
+                                        const quantity = quantities[stockItem.id];
+                                        if (quantity > 0 && quantity <= availableQty) {
+                                          handleAddItem(stockItem, quantity);
+                                        }
+                                      }}
+                                    >
+                                      Add
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                {quantities[stockItem.id] > 0 && (
+                                  <small className="text-success d-block mt-1">
+                                    Total: RM{(parseFloat(stockItem.unit_price) * quantities[stockItem.id]).toFixed(2)}
+                                  </small>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    )}
                   </div>
                 )}
               </div>
               <div className="modal-footer">
+                <div className="me-auto">
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={handleAddAllSelectedItems}
+                    disabled={Object.values(quantities).every(qty => qty <= 0)}
+                  >
+                    Add All Selected Items
+                  </button>
+                </div>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowItemSelector(false)}
                 >
-                  Close
+                  Done
                 </button>
               </div>
             </div>
@@ -519,5 +741,6 @@ export default function AddProduct() {
         </div>
       )}
     </div>
+    </>
   );
 }
