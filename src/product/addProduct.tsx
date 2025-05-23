@@ -104,45 +104,6 @@ export const fetchProductsWithItems = async () => {
   return data;
 };
 
-// Alternative: Fetch single product with items
-const fetchProductWithItems = async (productId: number) => {
-  const { data, error } = await supabase
-    .from("products")
-    .select(`
-      *,
-      product_items (
-        id,
-        quantity_used,
-        unit_price,
-        total_cost,
-        stock_item:stock_item_id (
-          id,
-          item_name,
-          sku,
-          unit_price,
-          quantity
-        )
-      )
-    `)
-    .eq("id", productId)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
-};
-
-// API functions
-const addProduct = async (product: Omit<ProductListPackage, 'item'>) => {
-  const { data, error } = await supabase.from("products").insert(product);
-  if (error) {
-    throw new Error(error.message);
-  }
-  return data;
-};
-
 export default function AddProduct() {
   const queryClient = useQueryClient();
 

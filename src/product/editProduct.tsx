@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput, ppGlobalInputDisabled, ppH1Custom2, ppMediumMuteText } from '../stylesStore/stylesGlobal';
 import { fetchProducts } from '../hooks/useStock';
+import { fetchProductWithItems, updateProductWithItems, ProductWithItems, SelectedItem } from '../hooks/productApi';
 import './styles/addProduct.scss';
-import { fetchProductItem, updateProductItem, ProductEditFormData } from '../hooks/useEditProduct';
 
 interface Product {
   id: number;
@@ -14,14 +14,6 @@ interface Product {
   unit_price: string;
   totalUnit: string;
   sku: string;
-}
-
-interface SelectedItem {
-  id: number;
-  item_name: string;
-  unit_price: number;
-  quantity_used: number;
-  total_cost: number;
 }
 
 interface ProductFormData {
@@ -39,6 +31,8 @@ export default function EditProduct() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  console.log('EditProduct component mounted with productId:', productId);
+
   const [formData, setFormData] = useState<ProductFormData>({
     productName: '',
     costTotal: 0,
@@ -54,13 +48,21 @@ export default function EditProduct() {
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showItemSelector, setShowItemSelector] = useState<boolean>(false);
+  const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Fetch product data
-  const { data: productData, isLoading: isProductLoading } = useQuery({
+  // Fetch existing product data
+  const { data: productData, isLoading: isProductLoading, isError: isProductError, error: productError } = useQuery({
     queryKey: ['product', productId],
-    queryFn: () => fetchProductItem(Number(productId)),
+    queryFn: () => {
+      console.log('Query function called with productId:', productId);
+      return fetchProductWithItems(productId!);
+    },
     enabled: !!productId,
+    retry: 1,
   });
+
+  console.log('Product query state:', { productData, isProductLoading, isProductError, productError });
 
   // Fetch stock items
   const { data: stockItems = [], isLoading: isStockLoading } = useQuery({
@@ -68,45 +70,67 @@ export default function EditProduct() {
     queryFn: fetchProducts
   });
 
-  // Update product mutation
+  // Update mutation
   const updateProductMutation = useMutation({
-    mutationFn: (updatedProduct: Omit<ProductEditFormData, 'id'>) => 
-      updateProductItem(Number(productId), updatedProduct),
+    mutationFn: ({ productId, product, selectedItems }: { 
+      productId: string; 
+      product: Partial<ProductWithItems>; 
+      selectedItems: SelectedItem[] 
+    }) => updateProductWithItems(productId, product, selectedItems),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      setIsSubmitting(false);
       setShowSuccess(true);
-
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      queryClient.invalidateQueries({ queryKey: ['productsWithItems'] });
       setTimeout(() => {
-        navigate('/products'); // Redirect after successful update
+        navigate('/product-list');
       }, 2000);
     },
-    onError: (error: Error) => {
-      setIsSubmitting(false);
+    onError: (error) => {
       alert(`Error updating product: ${error.message}`);
+    },
+    onSettled: () => {
+      setIsSubmitting(false);
     }
   });
 
+  // Populate form data when product data is loaded
   useEffect(() => {
-    if (productData) {
-        console.log('Product data:', productData); // Debug
-        
-        setFormData(prev => ({
-            ...prev,
-            productName: productData.product_name || '',
-            costTotal: productData.cost_total || 0,
-            sellingPrice: productData.selling_price || 0,
-            profitMargin: productData.profit_margin || 0,
-            profit: productData.profit || 0,
-            // Keep existing selectedItems if any
-            selectedItems: prev.selectedItems
-        }));
-        
-        if (productData.photo_url) {
-            setPhotoPreview(productData.photo_url);
-        }
+    console.log('useEffect triggered with productData:', productData);
+    
+    if (productData && productData.product_items) {
+      console.log('Product items:', productData.product_items);
+      
+      // Map product items to selected items format
+      const selectedItems: SelectedItem[] = productData.product_items.map(item => {
+        console.log('Processing item:', item);
+        return {
+          id: item.stock_item?.id || 0,
+          item_name: item.stock_item?.item_name || '',
+          unit_price: item.unit_price || 0,
+          quantity_used: item.quantity_used || 0,
+          total_cost: item.total_cost || 0
+        };
+      });
+
+      console.log('Mapped selected items:', selectedItems);
+
+      // Calculate totals from selected items
+      const costTotal = selectedItems.reduce((sum, item) => sum + item.total_cost, 0);
+
+      setFormData(prev => ({
+        ...prev,
+        productName: productData.product_name || '',
+        costTotal: costTotal,
+        sellingPrice: productData.selling_price || 0,
+        profitMargin: productData.profit_margin || 0,
+        profit: productData.profit || 0,
+        selectedItems: selectedItems,
+      }));
+
+      console.log('Form data updated with selected items');
     }
-}, [productData]);
+  }, [productData]);
 
   // Calculate totals when items or selling price changes
   useEffect(() => {
@@ -139,23 +163,77 @@ export default function EditProduct() {
     }
   };
 
+  const handleQuantityChange = (stockItemId: number, quantity: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [stockItemId]: quantity
+    }));
+  };
+
   const handleAddItem = (stockItem: Product, quantity: number) => {
+    // Check if item is already selected
+    const existingItemIndex = formData.selectedItems.findIndex(item => item.id === stockItem.id);
+    
     const unitPrice = parseFloat(stockItem.unit_price);
     const totalCost = unitPrice * quantity;
 
-    const newItem: SelectedItem = {
-      id: stockItem.id,
-      item_name: stockItem.item_name,
-      unit_price: unitPrice,
-      quantity_used: quantity,
-      total_cost: totalCost
-    };
+    if (existingItemIndex >= 0) {
+      // Update existing item
+      const updatedItems = [...formData.selectedItems];
+      updatedItems[existingItemIndex] = {
+        ...updatedItems[existingItemIndex],
+        quantity_used: updatedItems[existingItemIndex].quantity_used + quantity,
+        total_cost: updatedItems[existingItemIndex].total_cost + totalCost
+      };
+      
+      setFormData(prev => ({
+        ...prev,
+        selectedItems: updatedItems
+      }));
+    } else {
+      // Add new item
+      const newItem: SelectedItem = {
+        id: stockItem.id,
+        item_name: stockItem.item_name,
+        unit_price: unitPrice,
+        quantity_used: quantity,
+        total_cost: totalCost
+      };
 
-    setFormData(prev => ({
+      setFormData(prev => ({
+        ...prev,
+        selectedItems: [...prev.selectedItems, newItem]
+      }));
+    }
+
+    // Reset quantity for this item
+    setQuantities(prev => ({
       ...prev,
-      selectedItems: [...prev.selectedItems, newItem]
+      [stockItem.id]: 0
     }));
+    
     setShowItemSelector(false);
+  };
+
+  const handleAddAllSelectedItems = () => {
+    let addedCount = 0;
+    
+    Object.entries(quantities).forEach(([stockItemId, quantity]) => {
+      if (quantity > 0) {
+        const stockItem = stockItems.find(item => item.id === parseInt(stockItemId));
+        if (stockItem && quantity <= stockItem.quantity) {
+          handleAddItem(stockItem, quantity);
+          addedCount++;
+        }
+      }
+    });
+
+    if (addedCount > 0) {
+      alert(`${addedCount} item(s) added successfully!`);
+      setShowItemSelector(false);
+    } else {
+      alert('Please select quantities for items you want to add.');
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -179,16 +257,15 @@ export default function EditProduct() {
       isValid = false;
     }
 
-
     setErrors(newErrors);
     return isValid;
   };
 
   const handleSubmit = () => {
-    if (validateForm()) {
+    if (validateForm() && productId) {
       setIsSubmitting(true);
 
-      const productData: ProductEditFormData = {
+      const updatedProduct = {
         product_name: formData.productName,
         cost_total: formData.costTotal,
         selling_price: formData.sellingPrice,
@@ -196,20 +273,55 @@ export default function EditProduct() {
         profit: formData.profit
       };
 
-      updateProductMutation.mutate(productData);
+      updateProductMutation.mutate({
+        productId,
+        product: updatedProduct,
+        selectedItems: formData.selectedItems
+      });
     }
   };
 
+  const getAvailableQuantity = (stockItem: Product) => {
+    const selectedItem = formData.selectedItems.find(item => item.id === stockItem.id);
+    const usedQuantity = selectedItem ? selectedItem.quantity_used : 0;
+    return stockItem.quantity - usedQuantity;
+  };
 
+  const isItemAlreadySelected = (stockItemId: number) => {
+    return formData.selectedItems.some(item => item.id === stockItemId);
+  };
+
+  // Filter stock items based on search term
+  const filteredStockItems = stockItems.filter(item =>
+    item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Loading state
   if (isProductLoading) {
     return (
-      <div className="container-fluid py-4 bg-light">
-        <div className="container text-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-2">Loading product data...</p>
+      <div className="container mt-4 text-center">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
         </div>
+        <p className="mt-2">Loading product data...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (isProductError) {
+    console.error('Product error:', productError);
+    return (
+      <div className="container mt-4">
+        <div className="alert alert-danger" role="alert">
+          Error loading product data: {productError?.message || 'Unknown error'}
+          <br />
+          <small>Product ID: {productId}</small>
+        </div>
+        <button className="btn btn-primary" onClick={() => navigate('/products')}>
+          Back to Products
+        </button>
       </div>
     );
   }
@@ -226,7 +338,7 @@ export default function EditProduct() {
 
         {showSuccess && (
           <div className="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Success!</strong> Product has been updated.
+            <strong>Success!</strong> Product has been updated successfully.
             <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close" onClick={() => setShowSuccess(false)}></button>
           </div>
         )}
@@ -264,7 +376,7 @@ export default function EditProduct() {
                                 <strong>{item.item_name}</strong>
                                 <br />
                                 <small className="text-muted">
-                                  Qty: {item.quantity_used} × RM{item.unit_price} = RM{item.total_cost.toFixed(2)}
+                                  Qty: {item.quantity_used} × RM{item.unit_price.toFixed(2)} = RM{item.total_cost.toFixed(2)}
                                 </small>
                               </div>
                               <button
@@ -284,9 +396,13 @@ export default function EditProduct() {
                       <button
                         type="button"
                         className="btn btn-primary btn-sm mt-2"
-                        onClick={() => setShowItemSelector(true)}
+                        onClick={() => {
+                          setShowItemSelector(true);
+                          setQuantities({});
+                          setSearchTerm('');
+                        }}
                       >
-                        Add Item
+                        Add Items
                       </button>
                     </div>
                   </div>
@@ -355,6 +471,7 @@ export default function EditProduct() {
                       type="button" 
                       className={ppButtonCancel}
                       onClick={() => navigate('/products')}
+                      disabled={isSubmitting}
                     >
                       Cancel
                     </button>
@@ -432,10 +549,10 @@ export default function EditProduct() {
         </div>
       </div>
 
-      {/* Item Selector Modal */}
+      {/* Enhanced Item Selector Modal */}
       {showItemSelector && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
+          <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title">Select Items from Stock</h5>
@@ -446,6 +563,38 @@ export default function EditProduct() {
                 ></button>
               </div>
               <div className="modal-body">
+                <div className="alert alert-info">
+                  <strong>Tip:</strong> Set quantities for multiple items and click "Add All Selected Items" to add them all at once, or add them individually.
+                </div>
+                
+                {/* Search Bar */}
+                <div className="mb-4">
+                  <div className="input-group">
+                    <span className="input-group-text">🔍</span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search by item name or SKU..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button
+                        className="btn btn-outline-secondary"
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {searchTerm && (
+                    <small className="text-muted">
+                      Showing {filteredStockItems.length} of {stockItems.length} items
+                    </small>
+                  )}
+                </div>
+                
                 {isStockLoading ? (
                   <div className="text-center py-4">
                     <div className="spinner-border text-primary" role="status">
@@ -454,63 +603,105 @@ export default function EditProduct() {
                     <p className="mt-2">Loading stock items...</p>
                   </div>
                 ) : (
-                  <div className="row">
-                    {stockItems.map((stockItem) => (
-                      <div key={stockItem.id} className="col-md-6 mb-3">
-                        <div className="card h-100 shadow-sm">
-                          <div className="card-body">
-                            <h6 className="card-title text-primary">{stockItem.item_name}</h6>
-                            <div className="mb-3">
-                              <small className="text-muted d-block">
-                                <strong>SKU:</strong> {stockItem.sku}
-                              </small>
-                              <small className="text-muted d-block">
-                                <strong>Unit Price:</strong> RM{stockItem.unit_price}
-                              </small>
-                              <small className="text-muted d-block">
-                                <strong>Available:</strong> {stockItem.quantity} units
-                              </small>
-                            </div>
-                            <div className="input-group">
-                              <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Quantity"
-                                min="1"
-                                max={stockItem.quantity}
-                                id={`qty-${stockItem.id}`}
-                              />
-                              <button
-                                className="btn btn-outline-primary"
-                                type="button"
-                                onClick={() => {
-                                  const qtyInput = document.getElementById(`qty-${stockItem.id}`) as HTMLInputElement;
-                                  const quantity = parseInt(qtyInput.value);
-                                  if (quantity > 0 && quantity <= stockItem.quantity) {
-                                    handleAddItem(stockItem, quantity);
-                                    qtyInput.value = '';
-                                  } else {
-                                    alert('Please enter a valid quantity');
-                                  }
-                                }}
-                              >
-                                Add
-                              </button>
-                            </div>
-                          </div>
+                  <div>
+                    {filteredStockItems.length === 0 ? (
+                      <div className="text-center py-4">
+                        <div className="text-muted">
+                          <h5>No items found</h5>
+                          <p>Try adjusting your search terms or clear the search to see all items.</p>
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="row">
+                        {filteredStockItems.map((stockItem) => {
+                          const availableQty = getAvailableQuantity(stockItem);
+                          const isSelected = isItemAlreadySelected(stockItem.id);
+                          
+                          return (
+                            <div key={stockItem.id} className="col-lg-6 col-xl-4 mb-3">
+                              <div className={`card h-100 shadow-sm ${isSelected ? 'border-success' : ''}`}>
+                                <div className="card-body">
+                                  <div className="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 className="card-title text-primary mb-0">{stockItem.item_name}</h6>
+                                    {isSelected && (
+                                      <span className="badge bg-success">Selected</span>
+                                    )}
+                                  </div>
+                                  <div className="mb-3">
+                                    <small className="text-muted d-block">
+                                      <strong>SKU:</strong> {stockItem.sku}
+                                    </small>
+                                    <small className="text-muted d-block">
+                                      <strong>Unit Price:</strong> RM{stockItem.unit_price}
+                                    </small>
+                                    <small className="text-muted d-block">
+                                      <strong>Available:</strong> {availableQty} units
+                                      {isSelected && ` (${stockItem.quantity - availableQty} already selected)`}
+                                    </small>
+                                  </div>
+                                  
+                                  <div className="row g-2">
+                                    <div className="col-8">
+                                      <input
+                                        type="number"
+                                        className="form-control form-control-sm"
+                                        placeholder="Qty"
+                                        min="0"
+                                        max={availableQty}
+                                        value={quantities[stockItem.id] || ''}
+                                        onChange={(e) => handleQuantityChange(stockItem.id, parseInt(e.target.value) || 0)}
+                                        disabled={availableQty === 0}
+                                      />
+                                    </div>
+                                    <div className="col-4">
+                                      <button
+                                        className="btn btn-outline-primary btn-sm w-100"
+                                        type="button"
+                                        disabled={!quantities[stockItem.id] || quantities[stockItem.id] <= 0 || quantities[stockItem.id] > availableQty}
+                                        onClick={() => {
+                                          const quantity = quantities[stockItem.id];
+                                          if (quantity > 0 && quantity <= availableQty) {
+                                            handleAddItem(stockItem, quantity);
+                                          }
+                                        }}
+                                      >
+                                        Add
+                                      </button>
+                                    </div>
+                                  </div>
+                                  
+                                  {quantities[stockItem.id] > 0 && (
+                                    <small className="text-success d-block mt-1">
+                                      Total: RM{(parseFloat(stockItem.unit_price) * quantities[stockItem.id]).toFixed(2)}
+                                    </small>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
               <div className="modal-footer">
+                <div className="me-auto">
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={handleAddAllSelectedItems}
+                    disabled={Object.values(quantities).every(qty => qty <= 0)}
+                  >
+                    Add All Selected Items
+                  </button>
+                </div>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowItemSelector(false)}
                 >
-                  Close
+                  Done
                 </button>
               </div>
             </div>
