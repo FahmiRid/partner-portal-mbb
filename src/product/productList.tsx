@@ -1,90 +1,65 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import './styles/productList.scss';
+import './styles/stockList.scss';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ArrowUpDown, Pencil, Trash } from 'lucide-react';
-import { ppBadgeBlue, ppBadgeGrey, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
+import { ppBadgeBlue, ppBadgeGreen, ppBadgeYellow, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
 import NotFoundPage from '../heroSection/notFoundPage';
+import { ProductListPackage, fetchProductsList, updateProductsListOrder } from '../hooks/useProductList';
+import { useDeleteProduct } from '../hooks/useDeleteProduct';
 
-interface Product {
-  id: number;
-  productName: string;
-  quantity: string;
-  totalUnit: string;
-  sku: string;
-}
 
-// API functions
-const fetchProducts = async (): Promise<Product[]> => {
-  const response = await fetch('http://localhost:3003/api/products');
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
-  }
-  return response.json();
-};
-
-const updateProductsOrder = async (products: Product[]): Promise<Product[]> => {
-
-  return products;
-};
 
 export default function ProductList() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [draggedItem, setDraggedItem] = useState<Product | null>(null);
-  const [draggedOverItem, setDraggedOverItem] = useState<Product | null>(null);
+  const [draggedItem, setDraggedItem] = useState<ProductListPackage | null>(null);
+  const [draggedOverItem, setDraggedOverItem] = useState<ProductListPackage | null>(null);
   const [, setActiveRow] = useState<number | null>(null);
 
-  // QueryClient instance to interact with the cache
-  const queryClient = useQueryClient();
+  const deleteProductMutation = useDeleteProduct();
 
-  // Fetch products using TanStack Query
+  const queryClient = useQueryClient();
   const {
     data: products = [],
     isLoading,
     isError,
-    error
+    error,
   } = useQuery({
     queryKey: ['products'],
-    queryFn: fetchProducts,
+    queryFn: fetchProductsList,
     staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
+    // Add this option to refetch the data when the cache is invalidated
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    retry: 3,
   });
+
+  // Filter products based on search term
+  const filteredProducts = products.filter(product =>
+    product.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Mutation for updating product order
   const updateOrderMutation = useMutation({
-    mutationFn: updateProductsOrder,
+    mutationFn: updateProductsListOrder,
     onSuccess: (updatedProducts) => {
       // Update the cache with new order
       queryClient.setQueryData(['products'], updatedProducts);
     },
   });
 
-  // Filter products based on search term
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return products;
-    }
-
-    const term = searchTerm.toLowerCase().trim();
-    return products.filter(product =>
-      product.productName.toLowerCase().includes(term) ||
-      product.quantity.toLowerCase().includes(term) ||
-      product.totalUnit.toLowerCase().includes(term) ||
-      product.id.toString().includes(term) ||
-      product.sku.toLowerCase().includes(term)
-    );
-  }, [searchTerm, products]);
-
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, product: Product) => {
+  const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, product: ProductListPackage) => {
     setDraggedItem(product);
     e.currentTarget.classList.add('dragging');
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>, product: Product) => {
+  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>, product: ProductListPackage) => {
     e.preventDefault();
     setDraggedOverItem(product);
     e.currentTarget.classList.add('drag-over');
@@ -99,21 +74,8 @@ export default function ProductList() {
 
     if (!draggedItem || !draggedOverItem) return;
 
-    const draggedItemIndex = filteredProducts.findIndex(item => item.id === draggedItem.id);
-    const draggedOverItemIndex = filteredProducts.findIndex(item => item.id === draggedOverItem.id);
-
-    // Create new array with reordered items - this is for the filtered view
-    const newFilteredProducts = [...filteredProducts];
-    const [movedItem] = newFilteredProducts.splice(draggedItemIndex, 1);
-    newFilteredProducts.splice(draggedOverItemIndex, 0, movedItem);
-
     // Update the master products array based on the original indices
     const allProducts = [...products];
-    const originalDraggedIndex = allProducts.findIndex(item => item.id === draggedItem.id);
-    const originalDropIndex = allProducts.findIndex(item => item.id === draggedOverItem.id);
-
-    const [originalMovedItem] = allProducts.splice(originalDraggedIndex, 1);
-    allProducts.splice(originalDropIndex, 0, originalMovedItem);
 
     // Update the cache immediately for a responsive UI
     queryClient.setQueryData(['products'], allProducts);
@@ -135,6 +97,17 @@ export default function ProductList() {
   const handleAddProduct = () => {
     navigate('/add-product');
   }
+
+  // Handle edit button click - Navigate to edit page with the product ID
+  const handleEditProduct = (productId: number) => {
+    navigate(`/edit-product/${productId}`);
+  }
+
+  const handleDeleteProduct = (productId: number) => {
+    deleteProductMutation.mutate(productId);
+  };
+
+
   // Show loading state
   if (isLoading) {
     return (
@@ -164,8 +137,8 @@ export default function ProductList() {
         {/* Header section */}
         <div className="row mb-4">
           <div className="col">
-            <h1 className={ppH1Custom}>Product Inventory</h1>
-            <p className={ppMediumMuteText}>Manage and organize your product catalog</p>
+            <h1 className={ppH1Custom}>Product List</h1>
+            <p className={ppMediumMuteText}>Manage and organize your stock unit</p>
           </div>
         </div>
 
@@ -190,8 +163,7 @@ export default function ProductList() {
           </div>
           <div className="col-md-6 d-flex justify-content-md-end align-items-center mt-3 mt-md-0">
             <button className={ppBtnWithoutBg} onClick={handleAddProduct}>
-               {/*Plus Icon*/}
-              <Plus size={18} className="me-1 text-primary" /> 
+              <Plus size={18} className="me-1 text-primary" />
               Add Product
             </button>
           </div>
@@ -218,19 +190,25 @@ export default function ProductList() {
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '15%' }}>
                       <div className="d-flex align-items-center justify-content-center">
-                        Quantity
+                        Cost Total (RM)
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '20%' }}>
                       <div className="d-flex align-items-center justify-content-center">
-                        Total Unit (RM)
+                        Selling price(RM)
+                        <ArrowUpDown size={14} className="ms-1 text-muted" />
+                      </div>
+                    </th>
+                    <th scope="col" className="text-center py-3" style={{ width: '20%' }}>
+                      <div className="d-flex align-items-center justify-content-center">
+                        Profit Margin %
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '15%' }}>
                       <div className="d-flex align-items-center justify-content-center">
-                        SKU
+                        Profit (RM)
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
@@ -257,28 +235,31 @@ export default function ProductList() {
                         <span className="badge bg-light text-dark rounded-pill">{index + 1}</span>
                       </td>
                       <td className="align-middle fw-medium">
-                        {product.productName}
+                        {product.product_name}
                       </td>
                       <td className="text-center align-middle">
-                        <span className={ppBadgeGrey}>{product.quantity}</span>
+                        <span className={ppBadgeBlue}>{product.cost_total}</span>
                       </td>
                       <td className="text-center align-middle">
-                        <span className="badge bg-light text-dark rounded-pill px-3 py-2">{product.totalUnit}</span>
+                        <span className={ppBadgeYellow}>{product.selling_price}</span>
                       </td>
                       <td className="text-center align-middle">
-                        <span className={ppBadgeBlue}>{product.sku}</span>
+                        <span className={ppBadgeGreen}>{product.profit_margin}</span>
+                      </td>
+                      <td className="text-center align-middle">
+                        <span className={ppBadgeBlue}>{product.profit}</span>
                       </td>
                       <td className="text-end align-middle">
                         <div className="btn-group">
                           <button
                             className="btn btn-sm btn-outline-primary border-0"
-                            onClick={() => alert(`Edit product ${product.id}`)}
+                            onClick={() => handleEditProduct(product.id)}
                           >
                             <Pencil size={16} />
                           </button>
                           <button
                             className="btn btn-sm btn-outline-danger border-0"
-                            onClick={() => alert(`Delete product ${product.id}`)}
+                            onClick={() => handleDeleteProduct(product.id)}
                           >
                             <Trash size={16} />
                           </button>

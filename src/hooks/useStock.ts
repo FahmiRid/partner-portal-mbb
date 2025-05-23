@@ -1,24 +1,28 @@
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+// src/api/stockApi.ts
+import supabase from '../mocks/supabase';
 
-// Define the type for the product items returned from the API
-interface Stock {
+export interface Product {
   id: number;
-  item_name?: string;
-  quantity?: number;
-  unit_price?: number;
-  total_price?: number;
-  sku?: string;
+  item_name: string;
+  quantity: any;
+  total_price: string;
+  unit_price: string;
+  totalUnit: string;
+  sku: string;
 }
 
-const fetchStock = async (): Promise<Stock[]> => {
-  const response = await axios.get<Stock[]>('http://localhost:3003/api/item');
-  return response.data;
+
+export const fetchProducts = async (): Promise<Product[]> => {
+        const { data, error } = await supabase.from("stock").select("*");
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data || [];
+    };
+
+export const updateProductsOrder =  async (products: Product[]): Promise<Product[]> => {
+    return products;
 };
 
-export const useStock = () => {
-  return useQuery({
-    queryKey: ['stock'],
-    queryFn: fetchStock
-  });
-};

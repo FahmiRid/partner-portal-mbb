@@ -3,23 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import './styles/stockList.scss';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ArrowUpDown, Pencil, Trash } from 'lucide-react';
-import { ppBadgeBlue, ppBadgeGreen, ppBadgeGrey, ppBadgeYellow, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
+import { ppBadgeBlue, ppBadgeGreen, ppBadgeYellow, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
 import NotFoundPage from '../heroSection/notFoundPage';
-import supabase from '../mocks/supabase';
-
-interface Product {
-    id: number;
-    item_name: string;
-    quantity: any;
-    total_price: string;
-    unit_price: string;
-    totalUnit: string;
-    sku: string;
-}
-
-const updateProductsOrder = async (products: Product[]): Promise<Product[]> => {
-    return products;
-};
+import { Product, fetchProducts, updateProductsOrder } from '../hooks/useStock';
+import { useDeleteProduct } from '../hooks/useDeleteStock';
 
 export default function Stock() {
     const navigate = useNavigate();
@@ -28,30 +15,23 @@ export default function Stock() {
     const [draggedOverItem, setDraggedOverItem] = useState<Product | null>(null);
     const [, setActiveRow] = useState<number | null>(null);
 
-    // QueryClient instance to interact with the cache
+    const deleteProductMutation = useDeleteProduct();
+
     const queryClient = useQueryClient();
-
-    // API function to fetch products
-    const fetchProducts = async (): Promise<Product[]> => {
-        const { data, error } = await supabase.from("stock").select("*");
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        return data || [];
-    };
-
-    // Fetch products using TanStack Query
     const {
         data: products = [],
         isLoading,
         isError,
-        error
+        error,
     } = useQuery({
-        queryKey: ['products'],
+        queryKey: ['stocks'],
         queryFn: fetchProducts,
         staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
+        // Add this option to refetch the data when the cache is invalidated
+        refetchOnWindowFocus: false,
+        refetchOnMount: true,
+        refetchOnReconnect: true,
+        retry: 3,
     });
 
     // Filter products based on search term
@@ -64,7 +44,7 @@ export default function Stock() {
         mutationFn: updateProductsOrder,
         onSuccess: (updatedProducts) => {
             // Update the cache with new order
-            queryClient.setQueryData(['products'], updatedProducts);
+            queryClient.setQueryData(['stocks'], updatedProducts);
         },
     });
 
@@ -96,7 +76,7 @@ export default function Stock() {
         const allProducts = [...products];
 
         // Update the cache immediately for a responsive UI
-        queryClient.setQueryData(['products'], allProducts);
+        queryClient.setQueryData(['stocks'], allProducts);
 
         // Then send the update to the server
         updateOrderMutation.mutate(allProducts);
@@ -120,6 +100,13 @@ export default function Stock() {
     const handleEditProduct = (productId: number) => {
         navigate(`/edit-stock/${productId}`);
     }
+
+    const handleDeleteProduct = (productId: number) => {
+        if (window.confirm(`Are you sure you want to delete product ${productId}?`)) {
+            deleteProductMutation.mutate(productId);
+        }
+    };
+
 
     // Show loading state
     if (isLoading) {
@@ -197,7 +184,7 @@ export default function Stock() {
                                         </th>
                                         <th scope="col" className="py-3" style={{ width: '30%' }}>
                                             <div className="d-flex align-items-center">
-                                                Product Name
+                                                Item Name
                                                 <ArrowUpDown size={14} className="ms-1 text-muted" />
                                             </div>
                                         </th>
@@ -278,7 +265,7 @@ export default function Stock() {
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-outline-danger border-0"
-                                                        onClick={() => alert(`Delete product ${product.id}`)}
+                                                        onClick={() => handleDeleteProduct(product.id)}
                                                     >
                                                         <Trash size={16} />
                                                     </button>

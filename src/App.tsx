@@ -9,6 +9,7 @@ import AddProduct from './product/addProduct';
 import Stock from './product/stock';
 import AddStock from './product/addStock';
 import EditStock from './product/editStock';
+import EditProduct from './product/editProduct';
 
 function App() {
 
@@ -34,6 +35,7 @@ function App() {
         <Route path="/add-stock" element={<AddStock />} />
         <Route path="/add-product" element={<AddProduct />} />
         <Route path="/edit-stock/:id" element={<EditStock />} />
+        <Route path="/edit-product/:id" element={<EditProduct />} />
         <Route path="/app" element={<App />} />
       </Routes>
     </BrowserRouter>

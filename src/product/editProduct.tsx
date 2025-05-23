@@ -1,9 +1,10 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput, ppGlobalInputDisabled, ppH1Custom2, ppMediumMuteText } from '../stylesStore/stylesGlobal';
 import { fetchProducts } from '../hooks/useStock';
-import supabase from '../mocks/supabase';
-import './styles/addProduct.scss'
+import './styles/addProduct.scss';
+import { fetchProductItem, updateProductItem, ProductEditFormData } from '../hooks/useEditProduct';
 
 interface Product {
   id: number;
@@ -13,15 +14,6 @@ interface Product {
   unit_price: string;
   totalUnit: string;
   sku: string;
-}
-
-interface ProductListPackage {
-  id?: number;
-  product_name: string;
-  cost_total: number;
-  selling_price: number;
-  profit_margin: number;
-  profit: number;
 }
 
 interface SelectedItem {
@@ -42,15 +34,9 @@ interface ProductFormData {
   selectedItems: SelectedItem[];
 }
 
-// API functions
-const addProduct = async (product: Omit<ProductListPackage, 'item'>) => {
-  const { data, error } = await supabase.from("products").insert(product);
-  if (error) {
-    throw new Error(error.message);
-  }
-  return data;
-};
-export default function AddProduct() {
+export default function EditProduct() {
+  const { productId } = useParams<{ productId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState<ProductFormData>({
@@ -69,40 +55,58 @@ export default function AddProduct() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showItemSelector, setShowItemSelector] = useState<boolean>(false);
 
+  // Fetch product data
+  const { data: productData, isLoading: isProductLoading } = useQuery({
+    queryKey: ['product', productId],
+    queryFn: () => fetchProductItem(Number(productId)),
+    enabled: !!productId,
+  });
+
   // Fetch stock items
-  const { data: stockItems = [], isLoading } = useQuery({
+  const { data: stockItems = [], isLoading: isStockLoading } = useQuery({
     queryKey: ['stock'],
     queryFn: fetchProducts
   });
 
-  // Add product mutation
-  const addProductMutation = useMutation({
-    mutationFn: addProduct,
+  // Update product mutation
+  const updateProductMutation = useMutation({
+    mutationFn: (updatedProduct: Omit<ProductEditFormData, 'id'>) => 
+      updateProductItem(Number(productId), updatedProduct),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setIsSubmitting(false);
       setShowSuccess(true);
 
-      // Reset form after showing success message
       setTimeout(() => {
-        setFormData({
-          productName: '',
-          costTotal: 0,
-          sellingPrice: 0,
-          profitMargin: 0,
-          profit: 0,
-          photo: null,
-          selectedItems: [],
-        });
-        setPhotoPreview(null);
-        setShowSuccess(false);
-      }, 3000);
+        navigate('/products'); // Redirect after successful update
+      }, 2000);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       setIsSubmitting(false);
-      alert(`Error adding product: ${error.message}`);
+      alert(`Error updating product: ${error.message}`);
     }
   });
+
+  useEffect(() => {
+    if (productData) {
+        console.log('Product data:', productData); // Debug
+        
+        setFormData(prev => ({
+            ...prev,
+            productName: productData.product_name || '',
+            costTotal: productData.cost_total || 0,
+            sellingPrice: productData.selling_price || 0,
+            profitMargin: productData.profit_margin || 0,
+            profit: productData.profit || 0,
+            // Keep existing selectedItems if any
+            selectedItems: prev.selectedItems
+        }));
+        
+        if (productData.photo_url) {
+            setPhotoPreview(productData.photo_url);
+        }
+    }
+}, [productData]);
 
   // Calculate totals when items or selling price changes
   useEffect(() => {
@@ -175,10 +179,6 @@ export default function AddProduct() {
       isValid = false;
     }
 
-    // if (formData.sellingPrice <= 0) {
-    //   newErrors.sellingPrice = 'Selling price must be greater than 0';
-    //   isValid = false;
-    // }
 
     setErrors(newErrors);
     return isValid;
@@ -188,7 +188,7 @@ export default function AddProduct() {
     if (validateForm()) {
       setIsSubmitting(true);
 
-      const productData: ProductListPackage = {
+      const productData: ProductEditFormData = {
         product_name: formData.productName,
         cost_total: formData.costTotal,
         selling_price: formData.sellingPrice,
@@ -196,31 +196,37 @@ export default function AddProduct() {
         profit: formData.profit
       };
 
-      addProductMutation.mutate(productData);
+      updateProductMutation.mutate(productData);
     }
   };
 
-  // const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files.length > 0) {
-  //     const file = e.target.files[0];
-  //     setFormData((prev) => ({ ...prev, photo: file }));
-  //     setPhotoPreview(URL.createObjectURL(file));
-  //   }
-  // };
+
+  if (isProductLoading) {
+    return (
+      <div className="container-fluid py-4 bg-light">
+        <div className="container text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading product data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid py-4 bg-light">
       <div className="container">
         <div className="row mb-4">
           <div className="col">
-            <h1 className={ppH1Custom2}>Add Product</h1>
-            <p className={ppMediumMuteText}>Add a new product to your inventory</p>
+            <h1 className={ppH1Custom2}>Edit Product</h1>
+            <p className={ppMediumMuteText}>Edit product in your inventory</p>
           </div>
         </div>
 
         {showSuccess && (
           <div className="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Success!</strong> Product has been added to inventory.
+            <strong>Success!</strong> Product has been updated.
             <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close" onClick={() => setShowSuccess(false)}></button>
           </div>
         )}
@@ -344,21 +350,14 @@ export default function AddProduct() {
                     </div>
                   </div>
 
-                  {/* Photo Upload */}
-                  {/* <div className="mb-3">
-                    <label htmlFor="photo" className="form-label">Product Photo (Optional)</label>
-                    <input
-                      type="file"
-                      className={ppGlobalInput}
-                      id="photo"
-                      name="photo"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                    />
-                  </div> */}
-
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <button type="button" className={ppButtonCancel}>Cancel</button>
+                    <button 
+                      type="button" 
+                      className={ppButtonCancel}
+                      onClick={() => navigate('/products')}
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="button"
                       className={ppButtonYellow}
@@ -368,9 +367,9 @@ export default function AddProduct() {
                       {isSubmitting ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Saving...
+                          Updating...
                         </>
-                      ) : 'Add Product'}
+                      ) : 'Update Product'}
                     </button>
                   </div>
                 </div>
@@ -386,7 +385,7 @@ export default function AddProduct() {
                 {photoPreview && (
                   <div className="mb-3">
                     <small className="text-muted">Product Photo</small>
-                    <img src={photoPreview} alt="Product" width="100%" />
+                    <img src={photoPreview} alt="Product" width="100%" className="img-thumbnail" />
                   </div>
                 )}
                 <div className="mb-3">
@@ -424,7 +423,7 @@ export default function AddProduct() {
               <div className="card-body">
                 <h6 className="card-title">Need Help?</h6>
                 <p className="small text-muted">
-                  Contact our support team if you need any assistance with adding products to your inventory.
+                  Contact our support team if you need any assistance with editing products in your inventory.
                 </p>
                 <a href="/" className="btn btn-outline-primary btn-sm">Contact Support</a>
               </div>
@@ -447,7 +446,7 @@ export default function AddProduct() {
                 ></button>
               </div>
               <div className="modal-body">
-                {isLoading ? (
+                {isStockLoading ? (
                   <div className="text-center py-4">
                     <div className="spinner-border text-primary" role="status">
                       <span className="visually-hidden">Loading...</span>

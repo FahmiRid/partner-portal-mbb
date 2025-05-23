@@ -100,14 +100,6 @@ export default function AddStock() {
     }
   };
 
-  const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
   const validateForm = (): boolean => {
     const newErrors: Partial<stockFormData> = {};
     let isValid = true;
@@ -116,16 +108,6 @@ export default function AddStock() {
       newErrors.item_name = 'Product name is required';
       isValid = false;
     }
-
-    // if (formData.quantity <= 0) {
-    //   newErrors.quantity = 'Quantity must be greater than 0';
-    //   isValid = false;
-    // }
-
-    // if (formData.unit_price <= 0) {
-    //   newErrors.unit_price = 'Price must be greater than 0';
-    //   isValid = false;
-    // }
 
     if (!formData.sku.trim()) {
       newErrors.sku = 'SKU is required';
@@ -142,7 +124,6 @@ export default function AddStock() {
     if (validateForm()) {
       setIsSubmitting(true);
       
-      // Prepare the data for Supabase (exclude the 'item' field as it's not in the DB table)
       const stockData = {
         item_name: formData.item_name,
         quantity: formData.quantity,
@@ -151,7 +132,6 @@ export default function AddStock() {
         sku: formData.sku
       };
       
-      // Execute the mutation
       addStockMutation.mutate(stockData);
     }
   };
@@ -256,7 +236,7 @@ export default function AddStock() {
                     </div>
                   </div>
 
-                  <div className="mb-3">
+                  {/* <div className="mb-3">
                     <label htmlFor="item" className="form-label">Item Category</label>
                     <select
                       className={ppGlobalInput}
@@ -271,7 +251,7 @@ export default function AddStock() {
                       <option value="Food">Food</option>
                       <option value="Other">Other</option>
                     </select>
-                  </div>
+                  </div> */}
 
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <button type="button" className={ppButtonCancel}>Cancel</button>
@@ -308,10 +288,10 @@ export default function AddStock() {
                   <small className="text-muted">Product Name</small>
                   <p className="mb-1 fw-bold">{formData.item_name || '---'}</p>
                 </div>
-                <div className="mb-3">
+                {/* <div className="mb-3">
                   <small className="text-muted">Item</small>
                   <p className="mb-1 fw-bold">{formData.item || '---'}</p>
-                </div>
+                </div> */}
                 <div className="mb-3">
                   <small className="text-muted">Quantity</small>
                   <p className="mb-1 fw-bold">{formData.quantity}</p>

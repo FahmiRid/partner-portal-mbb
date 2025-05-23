@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import './ppHomepage.scss';
-import { Bar} from 'react-chartjs-2';
 import { Chart, registerables } from 'chart.js';
 
 
@@ -15,89 +14,6 @@ export default function PPHomepage() {
     // Register Chart.js components
     Chart.register(...registerables);
 
-    // State for analytics data
-    const [analyticsData] = useState({
-        userGrowth: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [
-                {
-                    label: 'New Users',
-                    data: [320, 420, 390, 450, 520, 600],
-                    backgroundColor: 'rgba(66, 133, 244, 0.6)',
-                    borderColor: 'rgba(66, 133, 244, 1)',
-                    borderWidth: 2,
-                    tension: 0.4
-                },
-                {
-                    label: 'Active Users',
-                    data: [290, 350, 330, 420, 490, 580],
-                    backgroundColor: 'rgba(52, 168, 83, 0.6)',
-                    borderColor: 'rgba(52, 168, 83, 1)',
-                    borderWidth: 2,
-                    tension: 0.4
-                }
-            ]
-        },
-        userDistribution: {
-            labels: ['Desktop', 'Mobile', 'Tablet'],
-            datasets: [{
-                data: [55, 35, 10],
-                backgroundColor: [
-                    'rgba(66, 133, 244, 0.7)',
-                    'rgba(219, 68, 55, 0.7)',
-                    'rgba(244, 180, 0, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(66, 133, 244, 1)',
-                    'rgba(219, 68, 55, 1)',
-                    'rgba(244, 180, 0, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        revenueData: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'Revenue',
-                data: [12500, 14000, 13200, 15600, 18200, 21000],
-                backgroundColor: 'rgba(66, 133, 244, 0.2)',
-                borderColor: 'rgba(66, 133, 244, 1)',
-                borderWidth: 2,
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        conversionRate: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'Conversion Rate (%)',
-                data: [3.2, 3.5, 3.8, 4.1, 4.5, 5.0],
-                backgroundColor: 'rgba(244, 180, 0, 0.6)',
-                borderColor: 'rgba(244, 180, 0, 1)',
-                borderWidth: 2
-            }]
-        },
-        userEngagement: {
-            labels: ['0-5 min', '5-15 min', '15-30 min', '30+ min'],
-            datasets: [{
-                data: [30, 35, 25, 10],
-                backgroundColor: [
-                    'rgba(66, 133, 244, 0.7)',
-                    'rgba(52, 168, 83, 0.7)',
-                    'rgba(251, 188, 5, 0.7)',
-                    'rgba(219, 68, 55, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(66, 133, 244, 1)',
-                    'rgba(52, 168, 83, 1)',
-                    'rgba(251, 188, 5, 1)',
-                    'rgba(219, 68, 55, 1)'
-                ],
-                borderWidth: 1
-            }]
-        }
-    });
-
     // Stats for metrics cards
     const [stats] = useState({
         totalUsers: 12583,
@@ -109,7 +25,7 @@ export default function PPHomepage() {
     });
 
     // State for loading indicators
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
 
     // Simulate data loading
     useEffect(() => {

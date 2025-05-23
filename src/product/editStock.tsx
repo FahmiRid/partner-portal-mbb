@@ -1,3 +1,4 @@
+// src/components/EditStock.tsx
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -5,24 +6,13 @@ import {
   ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput,
   ppGlobalInputDisabled, ppH1Custom2, ppMediumMuteText
 } from '../stylesStore/stylesGlobal';
-import supabase from '../mocks/supabase';
-
-interface StockFormData {
-  item_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  sku: string;
-  item: string;
-}
+import { fetchStockItem, updateStockItem ,StockFormData } from '../hooks/useEditStock'; 
 
 export default function EditStock() {
-  // Get the stock ID from URL parameters
   const { id } = useParams<{ id: string }>();
   const stockId = id ? parseInt(id) : 0;
   const navigate = useNavigate();
 
-  // Initialize form state
   const [formData, setFormData] = useState<StockFormData>({
     item_name: '',
     quantity: 1,
@@ -36,23 +26,7 @@ export default function EditStock() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
 
-  // Access the QueryClient instance
   const queryClient = useQueryClient();
-
-  // Fetch the stock data for the specific item
-  const fetchStockItem = async () => {
-    const { data, error } = await supabase
-      .from('stock')
-      .select('*')
-      .eq('id', stockId)
-      .single();
-    
-    if (error) {
-      throw new Error(error.message);
-    }
-    
-    return data;
-  };
 
   // Use Query to fetch the specific stock item
   const { 
@@ -61,12 +35,11 @@ export default function EditStock() {
     error: fetchError 
   } = useQuery({
     queryKey: ['stock', stockId],
-    queryFn: fetchStockItem,
-    enabled: !!stockId, // Only run the query if we have a stockId
-    staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
+    queryFn: () => fetchStockItem(stockId), // Call the API function
+    enabled: !!stockId,
+    staleTime: 1000 * 60 * 5,
   });
 
-  // Populate form when stock data is loaded
   useEffect(() => {
     if (stockItem) {
       setFormData({
@@ -80,7 +53,6 @@ export default function EditStock() {
     }
   }, [stockItem]);
 
-  // Calculate total price when quantity or unit_price changes
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
@@ -88,30 +60,14 @@ export default function EditStock() {
     }));
   }, [formData.quantity, formData.unit_price]);
 
-  // Create mutation for updating stock in Supabase
   const updateStockMutation = useMutation({
-    mutationFn: async (updatedStock: Omit<StockFormData, 'item'>) => {
-      const { data, error } = await supabase
-        .from('stock') // Make sure this matches your actual table name
-        .update(updatedStock)
-        .eq('id', stockId)
-        .select();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
+    mutationFn: (updatedStock: Omit<StockFormData, 'item'>) => updateStockItem(stockId, updatedStock), // Call the API function
     onSuccess: () => {
-      // Invalidate and refetch stocks list query
-      queryClient.invalidateQueries({ queryKey: ['products'] }); // Match the key used in Stock component
+      queryClient.invalidateQueries({ queryKey: ['stocks'] });
       queryClient.invalidateQueries({ queryKey: ['stock', stockId] });
       setShowSuccess(true);
-
-      // Navigate away or reset form after showing success message
       setTimeout(() => {
-        navigate('/stock-list'); // Navigate back to stock list after success
+        navigate('/stock-list');
       }, 2000);
     },
     onError: (error) => {
@@ -140,14 +96,6 @@ export default function EditStock() {
     }
   };
 
-  const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
   const validateForm = (): boolean => {
     const newErrors: Partial<StockFormData> = {};
     let isValid = true;
@@ -171,8 +119,6 @@ export default function EditStock() {
 
     if (validateForm()) {
       setIsSubmitting(true);
-
-      // Prepare the data for Supabase (exclude the 'item' field as it's not in the DB table)
       const stockData = {
         item_name: formData.item_name,
         quantity: formData.quantity,
@@ -181,16 +127,14 @@ export default function EditStock() {
         sku: formData.sku
       };
 
-      // Execute the mutation
       updateStockMutation.mutate(stockData);
     }
   };
 
   const handleCancel = () => {
-    navigate('/'); // Navigate back to stock list
+    navigate('/');
   };
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className="container py-4">
@@ -204,7 +148,6 @@ export default function EditStock() {
     );
   }
 
-  // Show error state
   if (fetchError) {
     return (
       <div className="container py-4">
@@ -318,23 +261,6 @@ export default function EditStock() {
                     </div>
                   </div>
 
-                  <div className="mb-3">
-                    <label htmlFor="item" className="form-label">Item Category</label>
-                    <select
-                      className={ppGlobalInput}
-                      id="item"
-                      name="item"
-                      value={formData.item}
-                      onChange={handleSelectChange}
-                    >
-                      <option value="">Select category</option>
-                      <option value="Electronics">Electronics</option>
-                      <option value="Clothing">Clothing</option>
-                      <option value="Food">Food</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <button
                       type="button"
@@ -369,10 +295,6 @@ export default function EditStock() {
                 <div className="mb-3">
                   <small className="text-muted">Product Name</small>
                   <p className="mb-1 fw-bold">{formData.item_name || '---'}</p>
-                </div>
-                <div className="mb-3">
-                  <small className="text-muted">Item Category</small>
-                  <p className="mb-1 fw-bold">{formData.item || '---'}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Quantity</small>
