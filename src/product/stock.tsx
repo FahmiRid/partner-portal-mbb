@@ -36,9 +36,16 @@ export default function Stock() {
     });
 
     // Filter products based on search term
-    const filteredProducts = products.filter(product =>
+    const filteredProducts = products
+    .filter(product =>
         product.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+        // Prioritize low stock items (quantity < 5)
+        if (a.quantity < 5 && b.quantity >= 5) return -1; // a comes first
+        if (a.quantity >= 5 && b.quantity < 5) return 1;  // b comes first
+        return 0; // maintain original order for equal priority
+    });
 
     // Pagination logic
     const indexOfLastRecord = currentPage * recordsPerPage;
