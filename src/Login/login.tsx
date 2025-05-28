@@ -11,7 +11,7 @@ export default function MaybankLoginPage() {
 
     // Dummy local storage credentials
     const dummyCredentials = {
-        pfNumber: '12345678',
+        pfNumber: 'admin',
         password: '123',
     };
 
