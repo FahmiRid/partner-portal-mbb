@@ -3,6 +3,7 @@ import { ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput, ppGlobalIn
 import './styles/addProduct.scss';
 import supabase from '../mocks/supabase';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 interface stockFormData {
   item_name: string;
@@ -15,6 +16,7 @@ interface stockFormData {
 }
 
 export default function AddStock() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<stockFormData>({
     item_name: '',
     quantity: 1,
@@ -40,18 +42,18 @@ export default function AddStock() {
         .from('stock')
         .insert([newStock])
         .select();
-      
+
       if (error) {
         throw new Error(error.message);
       }
-      
+
       return data;
     },
     onSuccess: () => {
       // Invalidate and refetch stocks list query
       queryClient.invalidateQueries({ queryKey: ['stocks'] });
       setShowSuccess(true);
-      
+
       // Reset form after showing success message
       setTimeout(() => {
         setFormData({
@@ -123,7 +125,7 @@ export default function AddStock() {
 
     if (validateForm()) {
       setIsSubmitting(true);
-      
+
       const stockData = {
         item_name: formData.item_name,
         quantity: formData.quantity,
@@ -131,10 +133,15 @@ export default function AddStock() {
         total_price: formData.total_price,
         sku: formData.sku
       };
-      
+
       addStockMutation.mutate(stockData);
     }
   };
+
+  const handleCancel = () => {
+    navigate('/stock-list');
+  };
+
 
   return (
     <div className="container-fluid py-4 bg-light">
@@ -236,25 +243,8 @@ export default function AddStock() {
                     </div>
                   </div>
 
-                  {/* <div className="mb-3">
-                    <label htmlFor="item" className="form-label">Item Category</label>
-                    <select
-                      className={ppGlobalInput}
-                      id="item"
-                      name="item"
-                      value={formData.item}
-                      onChange={handleSelectChange}
-                    >
-                      <option value="">Select category</option>
-                      <option value="Electronics">Electronics</option>
-                      <option value="Clothing">Clothing</option>
-                      <option value="Food">Food</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div> */}
-
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <button type="button" className={ppButtonCancel}>Cancel</button>
+                    <button type="button" className={ppButtonCancel} onClick={handleCancel}>Cancel</button>
                     <button
                       type="submit"
                       className={ppButtonYellow}

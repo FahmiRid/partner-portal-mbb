@@ -4,6 +4,7 @@ import { ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput, ppGlobalIn
 import { fetchProducts } from '../hooks/useStock';
 import supabase from '../mocks/supabase';
 import './styles/addProduct.scss'
+import { useNavigate } from 'react-router-dom';
 
 interface Product {
   id: number;
@@ -106,7 +107,7 @@ export const fetchProductsWithItems = async () => {
 
 export default function AddProduct() {
   const queryClient = useQueryClient();
-
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<ProductFormData>({
     productName: '',
     costTotal: 0,
@@ -307,6 +308,11 @@ export default function AddProduct() {
     }
   };
 
+  const handleCancel = () => {
+    navigate('/product-list');
+  };
+
+
   const getAvailableQuantity = (stockItem: Product) => {
     const selectedItem = formData.selectedItems.find(item => item.id === stockItem.id);
     const usedQuantity = selectedItem ? selectedItem.quantity_used : 0;
@@ -465,7 +471,7 @@ export default function AddProduct() {
                   </div>
 
                   <div className="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <button type="button" className={ppButtonCancel}>Cancel</button>
+                    <button type="button" className={ppButtonCancel} onClick={handleCancel}>Cancel</button>
                     <button
                       type="button"
                       className={ppButtonYellow}

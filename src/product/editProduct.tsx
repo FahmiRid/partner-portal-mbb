@@ -470,7 +470,7 @@ export default function EditProduct() {
                     <button 
                       type="button" 
                       className={ppButtonCancel}
-                      onClick={() => navigate('/products')}
+                      onClick={() => navigate('/product-list')}
                       disabled={isSubmitting}
                     >
                       Cancel

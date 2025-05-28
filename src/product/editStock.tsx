@@ -22,7 +22,11 @@ export default function EditStock() {
     item: '',
   });
 
-  const [errors, setErrors] = useState<Partial<StockFormData>>({});
+  const [originalQuantity, setOriginalQuantity] = useState<number>(0);
+  const [quantityReduction, setQuantityReduction] = useState<number>(0);
+  const [updateMode, setUpdateMode] = useState<'direct' | 'reduction'>('direct');
+
+  const [errors, setErrors] = useState<Partial<StockFormData & { quantityReduction: string }>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
 
@@ -42,14 +46,16 @@ export default function EditStock() {
 
   useEffect(() => {
     if (stockItem) {
+      const quantity = Number(stockItem.quantity) || 1;
       setFormData({
         item_name: stockItem.item_name || '',
-        quantity: Number(stockItem.quantity) || 1,
+        quantity: quantity,
         unit_price: Number(stockItem.unit_price) || 0,
         total_price: Number(stockItem.total_price) || 0,
         sku: stockItem.sku || '',
         item: stockItem.item || '',
       });
+      setOriginalQuantity(quantity);
     }
   }, [stockItem]);
 
@@ -59,6 +65,17 @@ export default function EditStock() {
       total_price: Number((prev.quantity * prev.unit_price).toFixed(2))
     }));
   }, [formData.quantity, formData.unit_price]);
+
+  // Update quantity when reduction amount changes
+  useEffect(() => {
+    if (updateMode === 'reduction') {
+      const newQuantity = Math.max(0, originalQuantity - quantityReduction);
+      setFormData(prev => ({
+        ...prev,
+        quantity: newQuantity
+      }));
+    }
+  }, [quantityReduction, originalQuantity, updateMode]);
 
   const updateStockMutation = useMutation({
     mutationFn: (updatedStock: Omit<StockFormData, 'item'>) => updateStockItem(stockId, updatedStock), // Call the API function
@@ -96,8 +113,30 @@ export default function EditStock() {
     }
   };
 
+  const handleQuantityReductionChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value === '' ? 0 : Number(e.target.value);
+    setQuantityReduction(Math.max(0, value));
+  };
+
+  const handleUpdateModeChange = (mode: 'direct' | 'reduction') => {
+    setUpdateMode(mode);
+    setErrors({}); // Clear errors when switching modes
+    
+    if (mode === 'direct') {
+      setQuantityReduction(0);
+      // Reset to original quantity when switching back to direct mode
+      setFormData(prev => ({
+        ...prev,
+        quantity: originalQuantity
+      }));
+    } else {
+      // When switching to reduction mode, reset reduction amount
+      setQuantityReduction(0);
+    }
+  };
+
   const validateForm = (): boolean => {
-    const newErrors: Partial<StockFormData> = {};
+    const newErrors: Partial<StockFormData & { quantityReduction: string }> = {};
     let isValid = true;
 
     if (!formData.item_name.trim()) {
@@ -108,6 +147,19 @@ export default function EditStock() {
     if (!formData.sku.trim()) {
       newErrors.sku = 'SKU is required';
       isValid = false;
+    }
+
+    if (updateMode === 'reduction') {
+      if (quantityReduction > originalQuantity) {
+        newErrors.quantityReduction = `Cannot reduce more than available quantity (${originalQuantity})`;
+        isValid = false;
+      }
+      if (quantityReduction < 0) {
+        newErrors.quantityReduction = 'Reduction amount cannot be negative';
+        isValid = false;
+      }
+    } else {
+      
     }
 
     setErrors(newErrors);
@@ -132,7 +184,7 @@ export default function EditStock() {
   };
 
   const handleCancel = () => {
-    navigate('/');
+    navigate('/stock-list');
   };
 
   if (isLoading) {
@@ -197,21 +249,82 @@ export default function EditStock() {
                     {errors.item_name && <div className="invalid-feedback">{errors.item_name}</div>}
                   </div>
 
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label htmlFor="quantity" className="form-label">Quantity</label>
-                      <input
-                        type="number"
-                        className={`${ppGlobalInput} ${errors.quantity ? 'is-invalid' : ''}`}
-                        id="quantity"
-                        name="quantity"
-                        min="1"
-                        placeholder="Enter quantity"
-                        value={formData.quantity || ''}
-                        onChange={handleInputChange}
-                      />
-                      {errors.quantity && <div className="invalid-feedback">{errors.quantity}</div>}
+                  {/* Quantity Update Mode Selection */}
+                  <div className="mb-3">
+                    <label className="form-label">Quantity Update Mode</label>
+                    <div className="d-flex gap-3">
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="updateMode"
+                          id="directMode"
+                          checked={updateMode === 'direct'}
+                          onChange={() => handleUpdateModeChange('direct')}
+                        />
+                        <label className="form-check-label" htmlFor="directMode">
+                          Direct Update
+                        </label>
+                      </div>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="updateMode"
+                          id="reductionMode"
+                          checked={updateMode === 'reduction'}
+                          onChange={() => handleUpdateModeChange('reduction')}
+                        />
+                        <label className="form-check-label" htmlFor="reductionMode">
+                          Quantity Reduction
+                        </label>
+                      </div>
                     </div>
+                    <small className="text-muted">
+                      {updateMode === 'direct' 
+                        ? 'Set the exact quantity value' 
+                        : 'Specify how much quantity to reduce from current stock'
+                      }
+                    </small>
+                  </div>
+
+                  <div className="row mb-3">
+                    {updateMode === 'direct' ? (
+                      <div className="col-md-6">
+                        <label htmlFor="quantity" className="form-label">Quantity</label>
+                        <input
+                          type="number"
+                          className={`${ppGlobalInput} ${errors.quantity ? 'is-invalid' : ''}`}
+                          id="quantity"
+                          name="quantity"
+                          min="0"
+                          placeholder="Enter quantity"
+                          value={formData.quantity || ''}
+                          onChange={handleInputChange}
+                        />
+                        {errors.quantity && <div className="invalid-feedback">{errors.quantity}</div>}
+                      </div>
+                    ) : (
+                      <div className="col-md-6">
+                        <label htmlFor="quantityReduction" className="form-label">
+                          Quantity to Reduce
+                        </label>
+                        <input
+                          type="number"
+                          className={`${ppGlobalInput} ${errors.quantityReduction ? 'is-invalid' : ''}`}
+                          id="quantityReduction"
+                          min="0"
+                          max={originalQuantity}
+                          placeholder="Enter amount to reduce"
+                          value={quantityReduction || ''}
+                          onChange={handleQuantityReductionChange}
+                        />
+                        {errors.quantityReduction && <div className="invalid-feedback">{errors.quantityReduction}</div>}
+                        <small className="text-muted">
+                          Current stock: {originalQuantity} | After reduction: {formData.quantity}
+                        </small>
+                      </div>
+                    )}
 
                     <div className="col-md-6">
                       <label htmlFor="unit_price" className="form-label">Price (RM)</label>
@@ -296,9 +409,25 @@ export default function EditStock() {
                   <small className="text-muted">Product Name</small>
                   <p className="mb-1 fw-bold">{formData.item_name || '---'}</p>
                 </div>
+                {updateMode === 'reduction' && (
+                  <div className="mb-3">
+                    <small className="text-muted">Original Quantity</small>
+                    <p className="mb-1 fw-bold text-muted">{originalQuantity}</p>
+                  </div>
+                )}
+                {updateMode === 'reduction' && quantityReduction > 0 && (
+                  <div className="mb-3">
+                    <small className="text-muted">Quantity Reduced</small>
+                    <p className="mb-1 fw-bold text-danger">-{quantityReduction}</p>
+                  </div>
+                )}
                 <div className="mb-3">
-                  <small className="text-muted">Quantity</small>
-                  <p className="mb-1 fw-bold">{formData.quantity}</p>
+                  <small className="text-muted">
+                    {updateMode === 'reduction' ? 'New Quantity' : 'Quantity'}
+                  </small>
+                  <p className={`mb-1 fw-bold ${updateMode === 'reduction' && quantityReduction > 0 ? 'text-success' : ''}`}>
+                    {formData.quantity}
+                  </p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Price</small>

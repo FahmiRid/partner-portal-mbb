@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import './styles/stockList.scss';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +17,8 @@ export default function ProductList() {
   const [, setActiveRow] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortOrder, setSortOrder] = useState('asc');
 
   const deleteProductMutation = useDeleteProduct();
 
@@ -29,22 +31,35 @@ export default function ProductList() {
   } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProductsList,
-    staleTime: 1000 * 60 * 5, 
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     refetchOnReconnect: true,
     retry: 3,
   });
 
-  const { data: productsWithItems = [] } = useQuery({
+  useQuery({
     queryKey: ['productsWithItems'],
     queryFn: fetchProductsWithItems
   });
 
+  const sortedProducts = useMemo(() => {
+    if (!sortColumn) return products;
+    return products.slice().sort((a, b) => {
+      if (sortOrder === 'asc') {
+        return a[sortColumn] > b[sortColumn] ? 1 : -1;
+      } else {
+        return a[sortColumn] < b[sortColumn] ? 1 : -1;
+      }
+    });
+  }, [products, sortColumn, sortOrder]);
+
   // Filter products based on search term
-  const filteredProducts = products.filter(product =>
-    product.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    return sortedProducts.filter(product =>
+      product.product_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sortedProducts, searchTerm]);
 
   // Pagination logic
   const indexOfLastRecord = currentPage * recordsPerPage;
@@ -72,6 +87,8 @@ export default function ProductList() {
       queryClient.setQueryData(['products'], updatedProducts);
     },
   });
+
+
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -123,6 +140,15 @@ export default function ProductList() {
 
   const handleDeleteProduct = (productId: number) => {
     deleteProductMutation.mutate(productId);
+  };
+
+  const handleSort = (column: any) => {
+    if (sortColumn === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortOrder('asc');
+    }
   };
 
   if (isLoading) {
@@ -198,31 +224,31 @@ export default function ProductList() {
                       </div>
                     </th>
                     <th scope="col" className="py-3" style={{ width: '30%' }}>
-                      <div className="d-flex align-items-center">
+                      <div className="d-flex align-items-center" onClick={() => handleSort('product_name')}>
                         Product Name
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '15%' }}>
-                      <div className="d-flex align-items-center justify-content-center">
+                      <div className="d-flex align-items-center justify-content-center" onClick={() => handleSort('cost_total')}>
                         Cost Total (RM)
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '20%' }}>
-                      <div className="d-flex align-items-center justify-content-center">
+                      <div className="d-flex align-items-center justify-content-center" onClick={() => handleSort('selling_price')}>
                         Selling price(RM)
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '20%' }}>
-                      <div className="d-flex align-items-center justify-content-center">
+                      <div className="d-flex align-items-center justify-content-center" onClick={() => handleSort('profit_margin')}>
                         Profit Margin %
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
                     </th>
                     <th scope="col" className="text-center py-3" style={{ width: '15%' }}>
-                      <div className="d-flex align-items-center justify-content-center">
+                      <div className="d-flex align-items-center justify-content-center" onClick={() => handleSort('profit')}>
                         Profit (RM)
                         <ArrowUpDown size={14} className="ms-1 text-muted" />
                       </div>
@@ -308,7 +334,7 @@ export default function ProductList() {
                     <ChevronLeft size={16} />
                   </button>
                 </li>
-                
+
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
                   <li key={number} className={`page-item ${currentPage === number ? 'active' : ''}`}>
                     <button className="page-link" onClick={() => paginate(number)}>
@@ -316,7 +342,7 @@ export default function ProductList() {
                     </button>
                   </li>
                 ))}
-                
+
                 <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                   <button className="page-link" onClick={nextPage} aria-label="Next">
                     <ChevronRight size={16} />
