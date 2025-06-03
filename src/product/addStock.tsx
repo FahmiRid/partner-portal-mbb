@@ -14,6 +14,12 @@ interface stockFormData {
   // photo: File | null;
   item: string;
 }
+declare global {
+  interface Window {
+    addStockActivity?: (type: 'add' | 'update' | 'delete', productName: string, details: string) => void;
+  }
+}
+
 
 export default function AddStock() {
   const navigate = useNavigate();
@@ -35,6 +41,58 @@ export default function AddStock() {
   // Access the QueryClient instance
   const queryClient = useQueryClient();
 
+  // Enhanced function to trigger notification
+  const triggerAddNotification = (productName: string, quantity: number, price: number) => {
+    const addInfo = {
+      productName,
+      details: `Quantity: ${quantity}, Price: RM${price.toFixed(2)}`,
+      timestamp: Date.now(),
+      type: 'add' as const
+    };
+
+    console.log('Triggering add notification for:', productName);
+
+    // Method 1: Direct function call (most reliable for same window)
+    if (window.addStockActivity) {
+      console.log('Using direct function call');
+      window.addStockActivity('add', productName, addInfo.details);
+    }
+
+    // Method 2: Custom events (backup for same-window communication)
+    try {
+      const customEvent = new CustomEvent('stockAdded', {
+        detail: addInfo
+      });
+      window.dispatchEvent(customEvent);
+      console.log('Dispatched custom event');
+    } catch (error) {
+      console.error('Error dispatching custom event:', error);
+    }
+
+    // Method 3: localStorage approach with enhanced data
+    try {
+      localStorage.setItem('stockActivityTrigger', JSON.stringify(addInfo));
+      console.log('Set localStorage trigger:', addInfo);
+
+      // Also set a simple flag that can be easily detected
+      localStorage.setItem('newStockAdded', JSON.stringify({
+        productName,
+        timestamp: Date.now()
+      }));
+
+      // Force a storage event for same-window detection
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'stockActivityTrigger',
+        newValue: JSON.stringify(addInfo),
+        oldValue: null,
+        storageArea: localStorage,
+        url: window.location.href
+      }));
+
+    } catch (error) {
+      console.error('Error setting localStorage:', error);
+    }
+  };
   // Create mutation for adding stock to Supabase
   const addStockMutation = useMutation({
     mutationFn: async (newStock: Omit<stockFormData, 'item'>) => {
@@ -49,9 +107,22 @@ export default function AddStock() {
 
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Stock added successfully:', data);
+      
       // Invalidate and refetch stocks list query
       queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      
+      // Trigger notification AFTER successful database insert
+      // Add a small delay to ensure the query invalidation is processed
+      setTimeout(() => {
+        triggerAddNotification(
+          formData.item_name,
+          formData.quantity,
+          formData.unit_price
+        );
+      }, 100);
+      
       setShowSuccess(true);
 
       // Reset form after showing success message
@@ -66,7 +137,10 @@ export default function AddStock() {
         });
         setPhotoPreview(null);
         setShowSuccess(false);
-      }, 3000);
+        
+        // Navigate back to stock list after successful addition
+        navigate('/stock-list');
+      }, 2000);
     },
     onError: (error) => {
       console.error('Error adding stock:', error);
@@ -134,6 +208,7 @@ export default function AddStock() {
         sku: formData.sku
       };
 
+      // The notification will be triggered in the onSuccess callback
       addStockMutation.mutate(stockData);
     }
   };
@@ -141,7 +216,6 @@ export default function AddStock() {
   const handleCancel = () => {
     navigate('/stock-list');
   };
-
 
   return (
     <div className="container-fluid py-4 bg-light">
@@ -278,10 +352,6 @@ export default function AddStock() {
                   <small className="text-muted">Product Name</small>
                   <p className="mb-1 fw-bold">{formData.item_name || '---'}</p>
                 </div>
-                {/* <div className="mb-3">
-                  <small className="text-muted">Item</small>
-                  <p className="mb-1 fw-bold">{formData.item || '---'}</p>
-                </div> */}
                 <div className="mb-3">
                   <small className="text-muted">Quantity</small>
                   <p className="mb-1 fw-bold">{formData.quantity}</p>

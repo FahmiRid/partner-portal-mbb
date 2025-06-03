@@ -6,7 +6,7 @@ import {
   ppButtonCancel, ppButtonYellow, ppCardMedium, ppGlobalInput,
   ppGlobalInputDisabled, ppH1Custom2, ppMediumMuteText
 } from '../stylesStore/stylesGlobal';
-import { fetchStockItem, updateStockItem ,StockFormData } from '../hooks/useEditStock'; 
+import { fetchStockItem, updateStockItem, StockFormData } from '../hooks/useEditStock';
 
 export default function EditStock() {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +32,21 @@ export default function EditStock() {
 
   const queryClient = useQueryClient();
 
+  // Enhanced function to trigger activity notification with better reliability
+  const triggerStockActivity = (type: 'add' | 'update' | 'delete', productName: string, details: string) => {
+    const activityData = {
+      type,
+      productName,
+      details,
+      timestamp: Date.now()
+    };
+  
+    // Method 1: Use localStorage with a unique key
+    localStorage.setItem('stockActivityTrigger', JSON.stringify(activityData));
+    
+    // Clean up after a short delay
+  };
+
   // Use Query to fetch the specific stock item
   const { 
     data: stockItem, 
@@ -39,7 +54,7 @@ export default function EditStock() {
     error: fetchError 
   } = useQuery({
     queryKey: ['stock', stockId],
-    queryFn: () => fetchStockItem(stockId), // Call the API function
+    queryFn: () => fetchStockItem(stockId),
     enabled: !!stockId,
     staleTime: 1000 * 60 * 5,
   });
@@ -78,10 +93,44 @@ export default function EditStock() {
   }, [quantityReduction, originalQuantity, updateMode]);
 
   const updateStockMutation = useMutation({
-    mutationFn: (updatedStock: Omit<StockFormData, 'item'>) => updateStockItem(stockId, updatedStock), // Call the API function
-    onSuccess: () => {
+    mutationFn: (updatedStock: Omit<StockFormData, 'item'>) => updateStockItem(stockId, updatedStock),
+    onSuccess: (updatedData) => {  
       queryClient.invalidateQueries({ queryKey: ['stocks'] });
       queryClient.invalidateQueries({ queryKey: ['stock', stockId] });
+      
+      // Generate activity details based on what was updated
+      const getUpdateDetails = () => {
+        const changes = [];
+        
+        if (originalQuantity !== formData.quantity) {
+          if (updateMode === 'reduction') {
+            changes.push(`Quantity reduced by ${quantityReduction} (${originalQuantity} → ${formData.quantity})`);
+          } else {
+            changes.push(`Quantity updated (${originalQuantity} → ${formData.quantity})`);
+          }
+        }
+        
+        if (stockItem && stockItem.unit_price !== formData.unit_price) {
+          changes.push(`Price updated (RM${stockItem.unit_price} → RM${formData.unit_price})`);
+        }
+        
+        if (stockItem && stockItem.sku !== formData.sku) {
+          changes.push(`SKU updated (${stockItem.sku} → ${formData.sku})`);
+        }
+        
+        return changes.length > 0 ? changes.join(', ') : 'Product information updated';
+      };
+
+      const details = `Updated from ${originalQuantity} to ${formData.quantity}`;
+      triggerStockActivity('update', formData.item_name, details);
+
+      // Small delay to ensure the Stock component is ready to receive the activity
+      setTimeout(() => {
+        triggerStockActivity('update', formData.item_name, 
+          `Quantity updated from ${originalQuantity} to ${formData.quantity}`);
+      }, 300);
+      
+      
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/stock-list');
@@ -120,17 +169,15 @@ export default function EditStock() {
 
   const handleUpdateModeChange = (mode: 'direct' | 'reduction') => {
     setUpdateMode(mode);
-    setErrors({}); // Clear errors when switching modes
+    setErrors({});
     
     if (mode === 'direct') {
       setQuantityReduction(0);
-      // Reset to original quantity when switching back to direct mode
       setFormData(prev => ({
         ...prev,
         quantity: originalQuantity
       }));
     } else {
-      // When switching to reduction mode, reset reduction amount
       setQuantityReduction(0);
     }
   };
@@ -158,8 +205,6 @@ export default function EditStock() {
         newErrors.quantityReduction = 'Reduction amount cannot be negative';
         isValid = false;
       }
-    } else {
-      
     }
 
     setErrors(newErrors);
@@ -225,7 +270,7 @@ export default function EditStock() {
 
         {showSuccess && (
           <div className="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Success!</strong> Stock has been updated.
+            <strong>Success!</strong> Stock has been updated successfully. Activity notification sent!
             <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close" onClick={() => setShowSuccess(false)}></button>
           </div>
         )}
