@@ -5,6 +5,7 @@ import { fetchProducts } from '../hooks/useStock';
 import supabase from '../mocks/supabase';
 import './styles/addProduct.scss';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner'
 
 interface Product {
   id: number;
@@ -133,13 +134,13 @@ export default function AddProduct() {
   });
 
   const addProductMutation = useMutation({
-    mutationFn: ({ product, selectedItems }: { product: Omit<ProductListPackage, 'id'>, selectedItems: SelectedItem[] }) => 
+    mutationFn: ({ product, selectedItems }: { product: Omit<ProductListPackage, 'id'>, selectedItems: SelectedItem[] }) =>
       addProductWithItems(product, selectedItems),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['productsWithItems'] });
       setIsSubmitting(false);
-      setShowSuccess(true);
+      
 
       setTimeout(() => {
         setFormData({
@@ -153,7 +154,8 @@ export default function AddProduct() {
         });
         setPhotoPreview(null);
         setShowSuccess(false);
-      }, 3000);
+        navigate('/product-list');
+      }, 1000);
     },
     onError: (error) => {
       setIsSubmitting(false);
@@ -200,7 +202,7 @@ export default function AddProduct() {
 
   const handleAddItem = (stockItem: Product, quantity: number) => {
     const existingItemIndex = formData.selectedItems.findIndex(item => item.id === stockItem.id);
-    
+
     const unitPrice = parseFloat(stockItem.unit_price);
     const totalCost = unitPrice * quantity;
 
@@ -211,7 +213,7 @@ export default function AddProduct() {
         quantity_used: updatedItems[existingItemIndex].quantity_used + quantity,
         total_cost: updatedItems[existingItemIndex].total_cost + totalCost
       };
-      
+
       setFormData(prev => ({
         ...prev,
         selectedItems: updatedItems
@@ -239,7 +241,7 @@ export default function AddProduct() {
 
   const handleAddAllSelectedItems = () => {
     let addedCount = 0;
-    
+
     Object.entries(quantities).forEach(([stockItemId, quantity]) => {
       if (quantity > 0) {
         const stockItem = stockItems.find(item => item.id === parseInt(stockItemId));
@@ -274,7 +276,7 @@ export default function AddProduct() {
     }
 
     if (formData.selectedItems.length === 0) {
-      alert('Please select at least one item');
+      toast.error('Please select at least one item');
       isValid = false;
     }
 
@@ -285,6 +287,7 @@ export default function AddProduct() {
   const handleSubmit = () => {
     if (validateForm()) {
       setIsSubmitting(true);
+      toast.success('Product has been added to inventory.');
 
       const productData: ProductListPackage = {
         product_name: formData.productName,
@@ -295,8 +298,8 @@ export default function AddProduct() {
       };
 
       addProductMutation.mutate({
-        product: productData, 
-        selectedItems: formData.selectedItems 
+        product: productData,
+        selectedItems: formData.selectedItems
       });
     }
   };
@@ -336,13 +339,6 @@ export default function AddProduct() {
               <p className={ppMediumMuteText}>Add a new product to your inventory</p>
             </div>
           </div>
-
-          {showSuccess && (
-            <div className="alert alert-success alert-dismissible fade show" role="alert">
-              <strong>Success!</strong> Product has been added to inventory.
-              <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close" onClick={() => setShowSuccess(false)}></button>
-            </div>
-          )}
 
           <div className="row">
             <div className="col-lg-8">
@@ -545,164 +541,164 @@ export default function AddProduct() {
 
         {/* Enhanced Item Selector Modal */}
         {showItemSelector && (
-            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-              <div className="modal-dialog modal-xl">
-                <div className="modal-content">
-                  <div className="modal-header bg-primary text-white">
-                    <h5 className="modal-title">Select Items from Stock</h5>
-                    <button
-                      type="button"
-                      className="btn-close btn-close-white"
-                      onClick={() => setShowItemSelector(false)}
-                    ></button>
+          <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <div className="modal-dialog modal-xl">
+              <div className="modal-content">
+                <div className="modal-header bg-primary text-white">
+                  <h5 className="modal-title">Select Items from Stock</h5>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setShowItemSelector(false)}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="alert alert-info">
+                    <strong>Tip:</strong> Set quantities for multiple items and click "Add All Selected Items" to add them all at once.
                   </div>
-                  <div className="modal-body">
-                    <div className="alert alert-info">
-                      <strong>Tip:</strong> Set quantities for multiple items and click "Add All Selected Items" to add them all at once.
-                    </div>
-                    
-                    <div className="mb-4">
-                      <div className="input-group">
-                        <span className="input-group-text">
-                          <i className="fas fa-search"></i>
-                        </span>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Search by item name or SKU..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        {searchTerm && (
-                          <button
-                            className="btn btn-outline-secondary"
-                            type="button"
-                            onClick={() => setSearchTerm('')}
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
+
+                  <div className="mb-4">
+                    <div className="input-group">
+                      <span className="input-group-text">
+                        <i className="fas fa-search"></i>
+                      </span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Search by item name or SKU..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
                       {searchTerm && (
-                        <small className="text-muted">
-                          Showing {filteredStockItems.length} of {stockItems.length} items
-                        </small>
+                        <button
+                          className="btn btn-outline-secondary"
+                          type="button"
+                          onClick={() => setSearchTerm('')}
+                        >
+                          Clear
+                        </button>
                       )}
                     </div>
-                    
-                    {isLoading ? (
-                      <div className="text-center py-4">
-                        <div className="spinner-border text-primary" role="status">
-                          <span className="visually-hidden">Loading...</span>
-                        </div>
-                        <p className="mt-2">Loading stock items...</p>
-                      </div>
-                    ) : (
-                      <div>
-                        {Object.entries(categorizedItems).map(([category, items]) => {
-                          if (items.length === 0) return null;
-
-                          return (
-                            <div key={category} className="mb-4">
-                              <h5 className="border-bottom pb-2 mb-3">{category}</h5>
-                              <div className="row">
-                                {items.map((stockItem) => {
-                                  const availableQty = getAvailableQuantity(stockItem);
-                                  const isSelected = isItemAlreadySelected(stockItem.id);
-                                  
-                                  return (
-                                    <div key={stockItem.id} className="col-lg-6 col-xl-4 mb-3">
-                                      <div className={`card h-100 shadow-sm ${isSelected ? 'border-success' : ''}`}>
-                                        <div className="card-body">
-                                          <div className="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 className="card-title text-primary mb-0">{stockItem.item_name}</h6>
-                                            {isSelected && (
-                                              <span className="badge bg-success">Selected</span>
-                                            )}
-                                          </div>
-                                          <div className="mb-3">
-                                            <small className="text-muted d-block">
-                                              <strong>SKU:</strong> {stockItem.sku}
-                                            </small>
-                                            <small className="text-muted d-block">
-                                              <strong>Unit Price:</strong> RM{stockItem.unit_price}
-                                            </small>
-                                            <small className="text-muted d-block">
-                                              <strong>Available:</strong> {availableQty} units
-                                              {isSelected && ` (${stockItem.quantity - availableQty} already selected)`}
-                                            </small>
-                                          </div>
-                                          
-                                          <div className="row g-2">
-                                            <div className="col-8">
-                                              <input
-                                                type="number"
-                                                className="form-control form-control-sm"
-                                                placeholder="Qty"
-                                                min="0"
-                                                max={availableQty}
-                                                value={quantities[stockItem.id] || ''}
-                                                onChange={(e) => handleQuantityChange(stockItem.id, parseInt(e.target.value) || 0)}
-                                                disabled={availableQty === 0}
-                                              />
-                                            </div>
-                                            <div className="col-4">
-                                              <button
-                                                className="btn btn-outline-primary btn-sm w-100"
-                                                type="button"
-                                                disabled={!quantities[stockItem.id] || quantities[stockItem.id] <= 0 || quantities[stockItem.id] > availableQty}
-                                                onClick={() => {
-                                                  const quantity = quantities[stockItem.id];
-                                                  if (quantity > 0 && quantity <= availableQty) {
-                                                    handleAddItem(stockItem, quantity);
-                                                  }
-                                                }}
-                                              >
-                                                Add
-                                              </button>
-                                            </div>
-                                          </div>
-                                          
-                                          {quantities[stockItem.id] > 0 && (
-                                            <small className="text-success d-block mt-1">
-                                              Total: RM{(parseFloat(stockItem.unit_price) * quantities[stockItem.id]).toFixed(2)}
-                                            </small>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                    {searchTerm && (
+                      <small className="text-muted">
+                        Showing {filteredStockItems.length} of {stockItems.length} items
+                      </small>
                     )}
                   </div>
-                  <div className="modal-footer">
-                    <div className="me-auto">
-                      <button
-                        type="button"
-                        className="btn btn-success"
-                        onClick={handleAddAllSelectedItems}
-                        disabled={Object.values(quantities).every(qty => qty <= 0)}
-                      >
-                        Add All Selected Items
-                      </button>
+
+                  {isLoading ? (
+                    <div className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2">Loading stock items...</p>
                     </div>
+                  ) : (
+                    <div>
+                      {Object.entries(categorizedItems).map(([category, items]) => {
+                        if (items.length === 0) return null;
+
+                        return (
+                          <div key={category} className="mb-4">
+                            <h5 className="border-bottom pb-2 mb-3">{category}</h5>
+                            <div className="row">
+                              {items.map((stockItem) => {
+                                const availableQty = getAvailableQuantity(stockItem);
+                                const isSelected = isItemAlreadySelected(stockItem.id);
+
+                                return (
+                                  <div key={stockItem.id} className="col-lg-6 col-xl-4 mb-3">
+                                    <div className={`card h-100 shadow-sm ${isSelected ? 'border-success' : ''}`}>
+                                      <div className="card-body">
+                                        <div className="d-flex justify-content-between align-items-start mb-2">
+                                          <h6 className="card-title text-primary mb-0">{stockItem.item_name}</h6>
+                                          {isSelected && (
+                                            <span className="badge bg-success">Selected</span>
+                                          )}
+                                        </div>
+                                        <div className="mb-3">
+                                          <small className="text-muted d-block">
+                                            <strong>SKU:</strong> {stockItem.sku}
+                                          </small>
+                                          <small className="text-muted d-block">
+                                            <strong>Unit Price:</strong> RM{stockItem.unit_price}
+                                          </small>
+                                          <small className="text-muted d-block">
+                                            <strong>Available:</strong> {availableQty} units
+                                            {isSelected && ` (${stockItem.quantity - availableQty} already selected)`}
+                                          </small>
+                                        </div>
+
+                                        <div className="row g-2">
+                                          <div className="col-8">
+                                            <input
+                                              type="number"
+                                              className="form-control form-control-sm"
+                                              placeholder="Qty"
+                                              min="0"
+                                              max={availableQty}
+                                              value={quantities[stockItem.id] || ''}
+                                              onChange={(e) => handleQuantityChange(stockItem.id, parseInt(e.target.value) || 0)}
+                                              disabled={availableQty === 0}
+                                            />
+                                          </div>
+                                          <div className="col-4">
+                                            <button
+                                              className="btn btn-outline-primary btn-sm w-100"
+                                              type="button"
+                                              disabled={!quantities[stockItem.id] || quantities[stockItem.id] <= 0 || quantities[stockItem.id] > availableQty}
+                                              onClick={() => {
+                                                const quantity = quantities[stockItem.id];
+                                                if (quantity > 0 && quantity <= availableQty) {
+                                                  handleAddItem(stockItem, quantity);
+                                                }
+                                              }}
+                                            >
+                                              Add
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {quantities[stockItem.id] > 0 && (
+                                          <small className="text-success d-block mt-1">
+                                            Total: RM{(parseFloat(stockItem.unit_price) * quantities[stockItem.id]).toFixed(2)}
+                                          </small>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <div className="me-auto">
                     <button
                       type="button"
-                      className="btn btn-secondary"
-                      onClick={() => setShowItemSelector(false)}
+                      className="btn btn-success"
+                      onClick={handleAddAllSelectedItems}
+                      disabled={Object.values(quantities).every(qty => qty <= 0)}
                     >
-                      Done
+                      Add All Selected Items
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowItemSelector(false)}
+                  >
+                    Done
+                  </button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
     </>
   );

@@ -10,6 +10,7 @@ import Stock from './product/stock';
 import AddStock from './product/addStock';
 import EditStock from './product/editStock';
 import EditProduct from './product/editProduct';
+import { Toaster } from 'sonner'
 
 function App() {
 
@@ -27,6 +28,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <Navbar />
+      <Toaster position="top-center" richColors/>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/home" element={<PPHomepage />} />

@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import './styles/stockList.scss';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, ArrowUpDown, Pencil, Trash, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, ArrowUpDown, Pencil, Trash} from 'lucide-react';
 import { ppBadgeBlue, ppBadgeGreen, ppBadgeYellow, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
 import NotFoundPage from '../heroSection/notFoundPage';
 import { Product, fetchProducts, updateProductsOrder } from '../hooks/useStock';
 import { useDeleteProduct } from '../hooks/useDeleteStock';
+import Pagination from '../heroSection/pagination';
+import { usePagination } from '../hooks/usePagination';
+import { toast } from 'sonner';
 
 export default function Stock() {
     const navigate = useNavigate();
@@ -14,7 +17,6 @@ export default function Stock() {
     const [draggedItem, setDraggedItem] = useState<Product | null>(null);
     const [draggedOverItem, setDraggedOverItem] = useState<Product | null>(null);
     const [, setActiveRow] = useState<number | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
     const recordsPerPage = 10;
 
     const deleteProductMutation = useDeleteProduct();
@@ -37,34 +39,30 @@ export default function Stock() {
 
     // Filter products based on search term
     const filteredProducts = products
-    .filter(product =>
-        product.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-        // Prioritize low stock items (quantity < 5)
-        if (a.quantity < 5 && b.quantity >= 5) return -1; // a comes first
-        if (a.quantity >= 5 && b.quantity < 5) return 1;  // b comes first
-        return 0; // maintain original order for equal priority
+        .filter(product =>
+            product.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => {
+            // Prioritize low stock items (quantity < 5)
+            if (a.quantity < 5 && b.quantity >= 5) return -1; // a comes first
+            if (a.quantity >= 5 && b.quantity < 5) return 1;  // b comes first
+            return 0; // maintain original order for equal priority
+        });
+
+    const {
+        currentPage,
+        currentRecords,
+        totalPages,
+        indexOfFirstRecord,
+        indexOfLastRecord,
+        paginate,
+        nextPage,
+        prevPage,
+        resetToFirstPage
+    } = usePagination({
+        data: filteredProducts,
+        recordsPerPage
     });
-
-    // Pagination logic
-    const indexOfLastRecord = currentPage * recordsPerPage;
-    const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-    const currentRecords = filteredProducts.slice(indexOfFirstRecord, indexOfLastRecord);
-    const totalPages = Math.ceil(filteredProducts.length / recordsPerPage);
-
-    // Change page
-    const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-    const nextPage = () => {
-        if (currentPage < totalPages) {
-            setCurrentPage(currentPage + 1);
-        }
-    };
-    const prevPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
-        }
-    };
 
     // Mutation for updating product order
     const updateOrderMutation = useMutation({
@@ -76,7 +74,7 @@ export default function Stock() {
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
-        setCurrentPage(1); // Reset to first page when searching
+        resetToFirstPage(); // Reset to first page when searching
     };
 
     const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, product: Product) => {
@@ -122,10 +120,11 @@ export default function Stock() {
         navigate(`/edit-stock/${productId}`);
     }
 
-    const handleDeleteProduct = (productId: number) => {
-        if (window.confirm(`Are you sure you want to delete product ${productId}?`)) {
+    const handleDeleteProduct = (productId: number, item_name: string) => {
+        if(toast.success(`Product deleted successfully ${item_name}`)) {
             deleteProductMutation.mutate(productId);
         }
+       
     };
 
     if (isLoading) {
@@ -286,7 +285,7 @@ export default function Stock() {
                                                         </button>
                                                         <button
                                                             className="btn btn-sm btn-outline-danger border-0"
-                                                            onClick={() => handleDeleteProduct(product.id)}
+                                                            onClick={() => handleDeleteProduct(product.id, product.item_name)}
                                                         >
                                                             <Trash size={16} />
                                                         </button>
@@ -308,33 +307,13 @@ export default function Stock() {
                 </div>
 
                 {/* Pagination */}
-                {filteredProducts.length > recordsPerPage && (
-                    <div className="d-flex justify-content-center">
-                        <nav aria-label="Page navigation">
-                            <ul className="pagination">
-                                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                                    <button className="page-link" onClick={prevPage} aria-label="Previous">
-                                        <ChevronLeft size={16} />
-                                    </button>
-                                </li>
-                                
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                                    <li key={number} className={`page-item ${currentPage === number ? 'active' : ''}`}>
-                                        <button className="page-link" onClick={() => paginate(number)}>
-                                            {number}
-                                        </button>
-                                    </li>
-                                ))}
-                                
-                                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                                    <button className="page-link" onClick={nextPage} aria-label="Next">
-                                        <ChevronRight size={16} />
-                                    </button>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={paginate}
+                    onNextPage={nextPage}
+                    onPrevPage={prevPage}
+                />
             </div>
         </div>
     );

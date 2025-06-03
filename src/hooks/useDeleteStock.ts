@@ -18,8 +18,9 @@ export const useDeleteProduct = () => {
     return useMutation({
         mutationFn: deleteStock,
         onSuccess: () => {
-             window.location.reload();
-           
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         },
     });
 };

@@ -1,10 +1,10 @@
 // hooks/useDeleteProduct.ts
 import { useMutation } from '@tanstack/react-query';
-import supabase from '../mocks/supabase'; 
+import supabase from '../mocks/supabase';
 
 const deleteProduct = async (productId: number) => {
     const { error } = await supabase
-        .from('products') 
+        .from('products')
         .delete()
         .eq('id', productId);
 
@@ -18,8 +18,10 @@ export const useDeleteProduct = () => {
     return useMutation({
         mutationFn: deleteProduct,
         onSuccess: () => {
-             window.location.reload();
-           
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+
         },
     });
 };
