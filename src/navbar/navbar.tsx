@@ -19,7 +19,9 @@ import {
   faSignOutAlt,
   faBell,
   faUsers,
-  faBars
+  faBars,
+  faSun,
+  faMoon
 } from '@fortawesome/free-solid-svg-icons';
 import './navbar.scss'
 
@@ -32,7 +34,15 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const OffcanvasNavbar: React.FC = () => {
+interface OffcanvasNavbarProps {
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
+}
+
+const OffcanvasNavbar: React.FC<OffcanvasNavbarProps> = ({ 
+  isDarkMode = false, 
+  onToggleDarkMode 
+}) => {
   const [show, setShow] = useState(false);
   const navigate = useNavigate();
   
@@ -58,13 +68,27 @@ const OffcanvasNavbar: React.FC = () => {
     { id: 5, title: 'Contact', link: '#', icon: faPhone },
   ];
 
+  // Dynamic styles based on theme
+  const navbarBg = isDarkMode 
+    ? 'linear-gradient(135deg, rgb(33, 37, 41), rgb(52, 58, 64))' 
+    : 'linear-gradient(135deg, rgb(242, 211, 25), rgb(31, 39, 19))';
+  
+  const offcanvasHeaderBg = isDarkMode
+    ? 'linear-gradient(135deg, rgb(33, 37, 41), rgb(52, 58, 64))'
+    : 'linear-gradient(135deg, rgb(242 211 25), rgb(31 39 19))';
+
+  const offcanvasBodyBg = isDarkMode ? 'bg-dark' : 'bg-light';
+  const textColor = isDarkMode ? 'text-light' : 'text-dark';
+  const buttonColor = isDarkMode ? 'white' : 'white';
+
   return (
     <>
       <Navbar 
         expand={false} 
         className="mb-3 py-3 shadow-sm" 
+        data-bs-theme={isDarkMode ? 'dark' : 'light'}
         style={{ 
-          background: 'linear-gradient(135deg, rgb(242, 211, 25)',
+          background: navbarBg,
           borderBottom: '1px solid rgba(255,255,255,0.1)'
         }}
       >
@@ -73,7 +97,7 @@ const OffcanvasNavbar: React.FC = () => {
             onClick={handleShow}
             variant="link"
             className="me-2 p-0 border-0"
-            style={{ color: 'white' }}
+            style={{ color: buttonColor }}
           >
             <FontAwesomeIcon icon={faBars} size="lg" />
           </Button>
@@ -104,19 +128,35 @@ const OffcanvasNavbar: React.FC = () => {
             </InputGroup>
           </Form> */}
           
-          <Button
-            variant="link"
-            className="p-0 border-0 position-relative"
-            style={{ color: 'white' }}
-          >
-            <FontAwesomeIcon icon={faBell} size="lg" />
-            <span 
-              className="position-absolute top-0 start-100 translate-middle badge rounded-pill"
-              style={{ background: '#ff4e50', fontSize: '0.6rem' }}
+          <div className="d-flex align-items-center gap-4">
+            {/* Dark Mode Toggle Button */}
+            <Button
+              variant="link"
+              className="p-0 border-0"
+              style={{ color: buttonColor }}
+              onClick={onToggleDarkMode}
+              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              3
-            </span>
-          </Button>
+              <FontAwesomeIcon 
+                icon={isDarkMode ? faSun : faMoon} 
+                size="lg" 
+              />
+            </Button>
+
+            <Button
+              variant="link"
+              className="p-0 border-0 position-relative"
+              style={{ color: buttonColor }}
+            >
+              <FontAwesomeIcon icon={faBell} size="lg" />
+              <span 
+                className="position-absolute top-0 start-100 translate-middle badge rounded-pill"
+                style={{ background: '#ff4e50', fontSize: '0.6rem' }}
+              >
+                3
+              </span>
+            </Button>
+          </div>
           
           <Offcanvas
             id="offcanvasNavbar"
@@ -125,12 +165,13 @@ const OffcanvasNavbar: React.FC = () => {
             show={show}
             onHide={handleClose}
             className="border-0"
+            data-bs-theme={isDarkMode ? 'dark' : 'light'}
           >
             <Offcanvas.Header 
               closeButton
               className="border-0" 
               style={{ 
-                background: 'linear-gradient(135deg, rgb(242 211 25), rgb(31 39 19)',
+                background: offcanvasHeaderBg,
                 borderBottom: '1px solid rgba(255,255,255,0.1)'
               }}
             >
@@ -139,7 +180,7 @@ const OffcanvasNavbar: React.FC = () => {
               </Offcanvas.Title>
             </Offcanvas.Header>
             
-            <Offcanvas.Body className='bg-dark'>
+            <Offcanvas.Body className={offcanvasBodyBg}>
               <div className="d-flex flex-column h-100">
                 <Nav className="flex-column gap-2 mb-auto">
                   {navItems.map((item) => (
@@ -147,20 +188,25 @@ const OffcanvasNavbar: React.FC = () => {
                       <NavDropdown
                         key={item.id}
                         title={
-                          <span>
+                          <span className={textColor}>
                             <FontAwesomeIcon icon={item.icon} className="me-3" /> {item.title}
                           </span>
                         }
                         id="nav-dropdown"
-                        className="text-light py-3 px-4 rounded-3 custom-gap"
+                        className={`${textColor} py-3 px-4 rounded-3 custom-gap`}
                         style={{ 
-                          background: item.active ? 'rgba(255,255,255,0.1)' : '',
+                          background: item.active ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : '',
                           transition: 'all 0.3s ease',
                         }}
-                        menuVariant="dark"
+                        menuVariant={isDarkMode ? 'dark' : 'light'}
                       >
                         {item.children.map((child) => (
-                          <NavDropdown.Item key={child.id} className="mt-3 mb-3" href={child.link} style={{ backgroundColor: 'transparent' }}>
+                          <NavDropdown.Item 
+                            key={child.id} 
+                            className="mt-3 mb-3" 
+                            href={child.link} 
+                            style={{ backgroundColor: 'transparent' }}
+                          >
                             <FontAwesomeIcon icon={child.icon} className="me-3" /> {child.title}
                           </NavDropdown.Item>
                         ))}
@@ -171,11 +217,10 @@ const OffcanvasNavbar: React.FC = () => {
                         href={item.link}
                         active={item.active}
                         onClick={handleClose}
-                        className={`text-light py-3 px-4 rounded-3 ${item.active ? 'active-link' : 'nav-link-hover'}`}
+                        className={`${textColor} py-3 px-4 rounded-3 ${item.active ? 'active-link' : 'nav-link-hover'}`}
                         style={{ 
-                          background: item.active ? 'rgba(255,255,255,0.1)' : '',
+                          background: item.active ? (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : '',
                           transition: 'all 0.3s ease'
-                          
                         }}
                       >
                         <FontAwesomeIcon icon={item.icon} className="me-3" /> {item.title}
