@@ -3,27 +3,10 @@ import './ppHomepage.scss';
 import { Chart, registerables } from 'chart.js';
 import { fetchProducts, Product } from '../hooks/useStock'; // Adjust path as needed
 
-interface StatCardProps {
-    title: string;
-    value: string | number;
-    icon: string;
-    color: string;
-    percentChange?: number;
-}
-
 export default function PPHomepage() {
     // Register Chart.js components
     Chart.register(...registerables);
 
-    // Stats for metrics cards
-    const [stats] = useState({
-        totalUsers: 12583,
-        activeUsers: 8742,
-        conversionRate: 4.5,
-        avgSessionTime: '18:32',
-        revenue: '$87,432',
-        orders: 1254
-    });
 
     // State for loading indicators and stock data
     const [, setLoading] = useState(true);
@@ -71,31 +54,6 @@ export default function PPHomepage() {
 
         return () => clearTimeout(timer);
     }, []);
-
-    // Stats card component
-    const StatCard = ({ title, value, icon, color, percentChange }: StatCardProps) => {
-        return (
-            <div className="card shadow-sm border-0 mb-4">
-                <div className="card-body p-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 className="text-muted mb-1">{title}</h6>
-                            <h4 className="mb-0 font-weight-bold">{value}</h4>
-                            {percentChange && (
-                                <small className={`mt-1 ${percentChange >= 0 ? 'text-success' : 'text-danger'}`}>
-                                    <i className={`fas fa-${percentChange >= 0 ? 'arrow-up' : 'arrow-down'} me-1`}></i>
-                                    {Math.abs(percentChange)}% from last period
-                                </small>
-                            )}
-                        </div>
-                        <div className={`bg-${color} bg-opacity-25 p-3 rounded-circle`}>
-                            <i className={`fas fa-${icon} text-${color}`}></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     // Overall Stock Card
     const OverallStockCard = () => {

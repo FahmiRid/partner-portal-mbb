@@ -46,7 +46,7 @@ export default function EditProduct() {
   const [errors, setErrors] = useState<Partial<ProductFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreview] = useState<string | null>(null);
   const [showItemSelector, setShowItemSelector] = useState<boolean>(false);
   const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
   const [searchTerm, setSearchTerm] = useState<string>('');

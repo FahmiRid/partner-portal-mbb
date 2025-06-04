@@ -122,7 +122,7 @@ export default function AddProduct() {
 
   const [errors, setErrors] = useState<Partial<ProductFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [, setShowSuccess] = useState<boolean>(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showItemSelector, setShowItemSelector] = useState<boolean>(false);
   const [quantities, setQuantities] = useState<{ [key: number]: number }>({});

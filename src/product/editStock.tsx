@@ -40,18 +40,18 @@ export default function EditStock() {
       details,
       timestamp: Date.now()
     };
-  
+
     // Method 1: Use localStorage with a unique key
     localStorage.setItem('stockActivityTrigger', JSON.stringify(activityData));
-    
+
     // Clean up after a short delay
   };
 
   // Use Query to fetch the specific stock item
-  const { 
-    data: stockItem, 
-    isLoading, 
-    error: fetchError 
+  const {
+    data: stockItem,
+    isLoading,
+    error: fetchError
   } = useQuery({
     queryKey: ['stock', stockId],
     queryFn: () => fetchStockItem(stockId),
@@ -94,43 +94,21 @@ export default function EditStock() {
 
   const updateStockMutation = useMutation({
     mutationFn: (updatedStock: Omit<StockFormData, 'item'>) => updateStockItem(stockId, updatedStock),
-    onSuccess: (updatedData) => {  
+    onSuccess: (updatedData) => {
       queryClient.invalidateQueries({ queryKey: ['stocks'] });
       queryClient.invalidateQueries({ queryKey: ['stock', stockId] });
-      
-      // Generate activity details based on what was updated
-      const getUpdateDetails = () => {
-        const changes = [];
-        
-        if (originalQuantity !== formData.quantity) {
-          if (updateMode === 'reduction') {
-            changes.push(`Quantity reduced by ${quantityReduction} (${originalQuantity} → ${formData.quantity})`);
-          } else {
-            changes.push(`Quantity updated (${originalQuantity} → ${formData.quantity})`);
-          }
-        }
-        
-        if (stockItem && stockItem.unit_price !== formData.unit_price) {
-          changes.push(`Price updated (RM${stockItem.unit_price} → RM${formData.unit_price})`);
-        }
-        
-        if (stockItem && stockItem.sku !== formData.sku) {
-          changes.push(`SKU updated (${stockItem.sku} → ${formData.sku})`);
-        }
-        
-        return changes.length > 0 ? changes.join(', ') : 'Product information updated';
-      };
+
 
       const details = `Updated from ${originalQuantity} to ${formData.quantity}`;
       triggerStockActivity('update', formData.item_name, details);
 
       // Small delay to ensure the Stock component is ready to receive the activity
       setTimeout(() => {
-        triggerStockActivity('update', formData.item_name, 
+        triggerStockActivity('update', formData.item_name,
           `Quantity updated from ${originalQuantity} to ${formData.quantity}`);
       }, 300);
-      
-      
+
+
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/stock-list');
@@ -170,7 +148,7 @@ export default function EditStock() {
   const handleUpdateModeChange = (mode: 'direct' | 'reduction') => {
     setUpdateMode(mode);
     setErrors({});
-    
+
     if (mode === 'direct') {
       setQuantityReduction(0);
       setFormData(prev => ({
@@ -326,8 +304,8 @@ export default function EditStock() {
                       </div>
                     </div>
                     <small className="text-muted">
-                      {updateMode === 'direct' 
-                        ? 'Set the exact quantity value' 
+                      {updateMode === 'direct'
+                        ? 'Set the exact quantity value'
                         : 'Specify how much quantity to reduce from current stock'
                       }
                     </small>
