@@ -1,78 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './ppHomepage.scss';
 import { Chart, registerables } from 'chart.js';
-import { fetchProducts, Product } from '../hooks/useStock'; // Adjust path as needed
+import { useStockAnalytics } from '../hooks/useDataDashboard';
+import { QuickAction } from './components/utils';
 
 export default function PPHomepage() {
     // Register Chart.js components
     Chart.register(...registerables);
 
-
-    // State for loading indicators and stock data
-    const [, setLoading] = useState(true);
-    const [allProducts, setAllProducts] = useState<Product[]>([]);
-    const [totalStockCount, setTotalStockCount] = useState(0);
-    const [lowStockCount, setLowStockCount] = useState(0);
-    const [lowStockItems, setLowStockItems] = useState<Product[]>([]);
-
-    // Define low stock threshold (you can adjust this value)
+    // Define low stock threshold
     const LOW_STOCK_THRESHOLD = 4;
 
-    // Fetch stock data
-    useEffect(() => {
-        const fetchStockData = async () => {
-            try {
-                const products = await fetchProducts();
-                setAllProducts(products);
-                setTotalStockCount(products.length);
-                
-                // Filter products with low stock
-                const lowStock = products.filter(product => {
-                    const quantity = parseInt(product.quantity) || 0;
-                    return quantity > 0 && quantity <= LOW_STOCK_THRESHOLD;
-                });
-
-                setLowStockItems(lowStock);
-                setLowStockCount(lowStock.length);
-            } catch (error) {
-                console.error('Error fetching stock data:', error);
-                setTotalStockCount(0);
-                setAllProducts([]);
-                setLowStockCount(0);
-                setLowStockItems([]);
-            }
-        };
-
-        fetchStockData();
-    }, []);
-
-    // Simulate data loading
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, []);
+    // Use TanStack Query hook instead of useEffect
+    const {
+        data: stockData,
+        isLoading,
+        isError,
+        error,
+        isRefetching,
+        refetch
+    } = useStockAnalytics(LOW_STOCK_THRESHOLD);
 
     // Overall Stock Card
     const OverallStockCard = () => {
-        // Calculate total quantity of all items
-        const totalQuantity = allProducts.reduce((sum, product) => {
-            return sum + (parseInt(product.quantity) || 0);
-        }, 0);
+        if (isLoading) {
+            return (
+                <div className="card shadow-sm border-0 mb-4">
+                    <div className="card-body p-3">
+                        <div className="d-flex justify-content-center align-items-center" style={{ height: '150px' }}>
+                            <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
-        // Calculate average stock per item
-        const avgStock = allProducts.length > 0 
-            ? (totalQuantity / allProducts.length).toFixed(1)
-            : 0;
+        if (isError || !stockData) {
+            return (
+                <div className="card shadow-sm border-0 mb-4">
+                    <div className="card-body p-3">
+                        <div className="text-center text-muted">
+                            <i className="fas fa-exclamation-triangle mb-2"></i>
+                            <p>Failed to load stock data</p>
+                            <button 
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => refetch()}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const { totalStockCount, totalQuantity, avgStock, lowStockCount } = stockData;
 
         return (
             <div className="card shadow-sm border-0 mb-4">
                 <div className="card-body p-3">
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 className="text-muted mb-1">Overall Stock Item</h6>
+                            <div className="d-flex align-items-center">
+                                <h6 className="text-muted mb-1 me-2">Overall Stock Item</h6>
+                                {isRefetching && (
+                                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span className="visually-hidden">Refreshing...</span>
+                                    </div>
+                                )}
+                            </div>
                             <h4 className="mb-0 font-weight-bold">{totalStockCount}</h4>
                             <div className="mt-2">
                                 <small className="text-muted">
@@ -95,16 +93,16 @@ export default function PPHomepage() {
                             <i className="fas fa-warehouse text-primary"></i>
                         </div>
                     </div>
-                    
-                    {allProducts.length > 0 && (
+
+                    {totalStockCount > 0 && (
                         <div className="mt-3">
                             <div className="progress" style={{ height: '8px' }}>
-                                <div 
-                                    className="progress-bar bg-success" 
-                                    role="progressbar" 
-                                    style={{ 
-                                        width: `${(lowStockCount / totalStockCount) * 100}%` 
-                                    }} 
+                                <div
+                                    className="progress-bar bg-danger"
+                                    role="progressbar"
+                                    style={{
+                                        width: `${(lowStockCount / totalStockCount) * 100}%`
+                                    }}
                                     aria-valuenow={lowStockCount}
                                     aria-valuemin={0}
                                     aria-valuemax={totalStockCount}
@@ -113,7 +111,7 @@ export default function PPHomepage() {
                             <small className="text-muted">
                                 <span className="text-danger">
                                     {lowStockCount} low stock items
-                                </span> 
+                                </span>
                                 {' '}out of {totalStockCount} total items
                             </small>
                         </div>
@@ -127,12 +125,54 @@ export default function PPHomepage() {
     const LowStockCard = () => {
         const [showDetails, setShowDetails] = useState(false);
 
+        if (isLoading) {
+            return (
+                <div className="card shadow-sm border-0 mb-4">
+                    <div className="card-body p-3">
+                        <div className="d-flex justify-content-center align-items-center" style={{ height: '150px' }}>
+                            <div className="spinner-border text-danger" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (isError || !stockData) {
+            return (
+                <div className="card shadow-sm border-0 mb-4">
+                    <div className="card-body p-3">
+                        <div className="text-center text-muted">
+                            <i className="fas fa-exclamation-triangle mb-2"></i>
+                            <p>Failed to load low stock data</p>
+                            <button 
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => refetch()}
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const { lowStockCount, lowStockItems } = stockData;
+
         return (
             <div className="card shadow-sm border-0 mb-4">
                 <div className="card-body p-3">
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 className="text-muted mb-1">Low Stock Items</h6>
+                            <div className="d-flex align-items-center">
+                                <h6 className="text-muted mb-1 me-2">Low Stock Items</h6>
+                                {isRefetching && (
+                                    <div className="spinner-border spinner-border-sm text-danger" role="status">
+                                        <span className="visually-hidden">Refreshing...</span>
+                                    </div>
+                                )}
+                            </div>
                             <h4 className="mb-0 font-weight-bold text-danger">{lowStockCount}</h4>
                             <small className="text-danger mt-1">
                                 <i className="fas fa-exclamation-triangle me-1"></i>
@@ -143,17 +183,17 @@ export default function PPHomepage() {
                             <i className="fas fa-exclamation-triangle text-danger"></i>
                         </div>
                     </div>
-                    
+
                     {lowStockCount > 0 && (
                         <div className="mt-3">
-                            <button 
+                            <button
                                 className="btn btn-sm btn-outline-danger"
                                 onClick={() => setShowDetails(!showDetails)}
                             >
                                 {showDetails ? 'Hide Details' : 'View Details'}
                                 <i className={`fas fa-chevron-${showDetails ? 'up' : 'down'} ms-1`}></i>
                             </button>
-                            
+
                             {showDetails && (
                                 <div className="mt-3">
                                     <div className="table-responsive">
@@ -166,7 +206,7 @@ export default function PPHomepage() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {lowStockItems.map((item) => (
+                                                {lowStockItems.map((item: { id: React.Key | null | undefined; item_name: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; sku: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; quantity: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; }) => (
                                                     <tr key={item.id}>
                                                         <td>{item.item_name}</td>
                                                         <td>{item.sku}</td>
@@ -198,47 +238,45 @@ export default function PPHomepage() {
                         <h2 className="mb-1">Dashboard Partner Portal</h2>
                         <p className="text-muted mb-0">Analytics and performance metrics</p>
                     </div>
+                    <div className="col-md-6 text-end">
+                        <button
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => refetch()}
+                            disabled={isRefetching}
+                        >
+                            {isRefetching ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    Refreshing...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fas fa-sync-alt me-1"></i>
+                                    Refresh Data
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Stats Cards */}
-                {/* <div className="row">
-                    <div className="col-md-6 col-lg-3">
-                        <StatCard
-                            title="Total Users"
-                            value={stats.totalUsers.toLocaleString()}
-                            icon="users"
-                            color="primary"
-                            percentChange={12.4}
-                        />
+                {/* Error Banner */}
+                {isError && (
+                    <div className="row mb-4">
+                        <div className="col-12">
+                            <div className="alert alert-danger alert-dismissible" role="alert">
+                                <i className="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Error loading data:</strong> {error?.message || 'Something went wrong'}
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger ms-2"
+                                    onClick={() => refetch()}
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="col-md-6 col-lg-3">
-                        <StatCard
-                            title="Active Users"
-                            value={stats.activeUsers.toLocaleString()}
-                            icon="user-check"
-                            color="success"
-                            percentChange={8.7}
-                        />
-                    </div>
-                    <div className="col-md-6 col-lg-3">
-                        <StatCard
-                            title="Conversion Rate"
-                            value={`${stats.conversionRate}%`}
-                            icon="chart-line"
-                            color="info"
-                            percentChange={3.2}
-                        />
-                    </div>
-                    <div className="col-md-6 col-lg-3">
-                        <StatCard
-                            title="Avg. Session Time"
-                            value={stats.avgSessionTime}
-                            icon="clock"
-                            color="warning"
-                            percentChange={5.8}
-                        />
-                    </div>
-                </div> */}
+                )}
 
                 {/* Stock Overview Row */}
                 <div className="row">
@@ -247,6 +285,13 @@ export default function PPHomepage() {
                     </div>
                     <div className="col-md-6 col-lg-4">
                         <LowStockCard />
+                    </div>
+                </div>
+
+                <label>Quick Actions</label>
+                <div className="row">
+                    <div className="col-md-6">
+                        <QuickAction />
                     </div>
                 </div>
             </div>

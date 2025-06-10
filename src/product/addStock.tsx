@@ -20,7 +20,6 @@ declare global {
   }
 }
 
-
 export default function AddStock() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<stockFormData>({
@@ -37,6 +36,9 @@ export default function AddStock() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+ 
+  // Detect current theme
+  const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 
   // Access the QueryClient instance
   const queryClient = useQueryClient();
@@ -93,6 +95,7 @@ export default function AddStock() {
       console.error('Error setting localStorage:', error);
     }
   };
+
   // Create mutation for adding stock to Supabase
   const addStockMutation = useMutation({
     mutationFn: async (newStock: Omit<stockFormData, 'item'>) => {
@@ -109,10 +112,10 @@ export default function AddStock() {
     },
     onSuccess: (data) => {
       console.log('Stock added successfully:', data);
-      
+
       // Invalidate and refetch stocks list query
       queryClient.invalidateQueries({ queryKey: ['stocks'] });
-      
+
       // Trigger notification AFTER successful database insert
       // Add a small delay to ensure the query invalidation is processed
       setTimeout(() => {
@@ -122,7 +125,7 @@ export default function AddStock() {
           formData.unit_price
         );
       }, 100);
-      
+
       setShowSuccess(true);
 
       // Reset form after showing success message
@@ -137,7 +140,7 @@ export default function AddStock() {
         });
         setPhotoPreview(null);
         setShowSuccess(false);
-        
+
         // Navigate back to stock list after successful addition
         navigate('/stock-list');
       }, 2000);
@@ -218,12 +221,12 @@ export default function AddStock() {
   };
 
   return (
-    <div className="container-fluid py-4 bg-light">
+    <div className={`container-fluid py-4 ${isDarkMode ? 'bg-dark' : 'bg-light'}`}>
       <div className="container">
         <div className="row mb-4">
           <div className="col">
-            <h1 className={ppH1Custom2}>Add Stock</h1>
-            <p className={ppMediumMuteText}>Add a new product to your inventory</p>
+            <h1 className={`${ppH1Custom2} ${isDarkMode ? 'text-white' : ''}`}>Add Stock</h1>
+            <p className={`${ppMediumMuteText} ${isDarkMode ? 'text-light' : ''}`}>Add a new product to your inventory</p>
           </div>
         </div>
 
@@ -236,29 +239,30 @@ export default function AddStock() {
 
         <div className="row">
           <div className="col-lg-8">
-            <div className="card shadow-sm border-0">
-              <div className={ppCardMedium}>
+            <div className={`card shadow-sm border-0 ${isDarkMode ? 'bg-dark' : ''}`}>
+              <div className={`${ppCardMedium} ${isDarkMode ? 'text-light' : ''}`}>
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
-                    <label htmlFor="item_name" className="form-label">Item Name</label>
+                    <label htmlFor="item_name" className={`form-label ${isDarkMode ? 'text-light' : ''}`}>Item Name</label>
                     <input
                       type="text"
-                      className={`${ppGlobalInput} ${errors.item_name ? 'is-invalid' : ''}`}
+                      className={`${ppGlobalInput} ${errors.item_name ? 'is-invalid' : ''} ${isDarkMode ? 'bg-dark text-light border-secondary' : ''}`}
                       id="item_name"
                       name="item_name"
                       placeholder="Enter product name"
                       value={formData.item_name}
                       onChange={handleInputChange}
+                      // style={isDarkMode ? { color: '#6c757d' } : {}}
                     />
                     {errors.item_name && <div className="invalid-feedback">{errors.item_name}</div>}
                   </div>
 
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label htmlFor="quantity" className="form-label">Quantity</label>
+                      <label htmlFor="quantity" className={`form-label ${isDarkMode ? 'text-light' : ''}`}>Quantity</label>
                       <input
                         type="number"
-                        className={`${ppGlobalInput} ${errors.quantity ? 'is-invalid' : ''}`}
+                        className={`${ppGlobalInput} ${errors.quantity ? 'is-invalid' : ''} ${isDarkMode ? 'bg-dark text-light border-secondary' : ''}`}
                         id="quantity"
                         name="quantity"
                         min="1"
@@ -270,12 +274,12 @@ export default function AddStock() {
                     </div>
 
                     <div className="col-md-6">
-                      <label htmlFor="unit_price" className="form-label">Price (RM)</label>
+                      <label htmlFor="unit_price" className={`form-label ${isDarkMode ? 'text-light' : ''}`}>Price (RM)</label>
                       <div className="input-group">
                         <input
                           type="number"
                           step="0.01"
-                          className={`${ppGlobalInput} ${errors.unit_price ? 'is-invalid' : ''}`}
+                          className={`${ppGlobalInput} ${errors.unit_price ? 'is-invalid' : ''} ${isDarkMode ? 'bg-dark text-light border-secondary' : ''}`}
                           id="unit_price"
                           name="unit_price"
                           placeholder="0.00"
@@ -289,24 +293,24 @@ export default function AddStock() {
 
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label htmlFor="total_price" className="form-label">Total Unit</label>
+                      <label htmlFor="total_price" className={`form-label ${isDarkMode ? 'text-light' : ''}`}>Total Unit</label>
                       <div className="input-group">
                         <input
                           type="text"
-                          className={ppGlobalInputDisabled}
+                          className={`${ppGlobalInputDisabled} ${isDarkMode ? 'bg-secondary text-dark border-secondary' : ''}`}
                           id="total_price"
                           value={formData.total_price.toFixed(2)}
                           readOnly
                         />
                       </div>
-                      <small className="text-muted">Automatically calculated</small>
+                      <small className={isDarkMode ? 'text-muted' : 'text-muted'}>Automatically calculated</small>
                     </div>
 
                     <div className="col-md-6">
-                      <label htmlFor="sku" className="form-label">SKU</label>
+                      <label htmlFor="sku" className={`form-label ${isDarkMode ? 'text-light' : ''}`}>SKU</label>
                       <input
                         type="text"
-                        className={`${ppGlobalInput} ${errors.sku ? 'is-invalid' : ''}`}
+                        className={`${ppGlobalInput} ${errors.sku ? 'is-invalid' : ''} ${isDarkMode ? 'bg-dark text-light border-secondary' : ''}`}
                         id="sku"
                         name="sku"
                         placeholder="Enter SKU code"
@@ -338,10 +342,10 @@ export default function AddStock() {
           </div>
 
           <div className="col-lg-4">
-            <div className="card shadow-sm border-0 bg-white">
-              <div className="card-body">
-                <h5 className="card-title">Product Summary</h5>
-                <hr />
+            <div className={`card shadow-sm border-0 ${isDarkMode ? 'bg-dark' : 'bg-white'}`}>
+              <div className={`card-body ${isDarkMode ? 'text-light' : ''}`}>
+                <h5 className={`card-title ${isDarkMode ? 'text-light' : ''}`}>Product Summary</h5>
+                <hr className={isDarkMode ? 'border-secondary' : ''} />
                 {photoPreview && (
                   <div className="mb-3">
                     <small className="text-muted">Product Photo</small>
@@ -350,31 +354,31 @@ export default function AddStock() {
                 )}
                 <div className="mb-3">
                   <small className="text-muted">Product Name</small>
-                  <p className="mb-1 fw-bold">{formData.item_name || '---'}</p>
+                  <p className={`mb-1 fw-bold ${isDarkMode ? 'text-light' : ''}`}>{formData.item_name || '---'}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Quantity</small>
-                  <p className="mb-1 fw-bold">{formData.quantity}</p>
+                  <p className={`mb-1 fw-bold ${isDarkMode ? 'text-light' : ''}`}>{formData.quantity}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Price</small>
-                  <p className="mb-1 fw-bold">RM{formData.unit_price.toFixed(2)}</p>
+                  <p className={`mb-1 fw-bold ${isDarkMode ? 'text-light' : ''}`}>RM{formData.unit_price.toFixed(2)}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">Total Unit</small>
-                  <p className="mb-1 fw-bold">RM{formData.total_price.toFixed(2)}</p>
+                  <p className={`mb-1 fw-bold ${isDarkMode ? 'text-light' : ''}`}>RM{formData.total_price.toFixed(2)}</p>
                 </div>
                 <div className="mb-3">
                   <small className="text-muted">SKU</small>
-                  <p className="mb-1 fw-bold">{formData.sku || '---'}</p>
+                  <p className={`mb-1 fw-bold ${isDarkMode ? 'text-light' : ''}`}>{formData.sku || '---'}</p>
                 </div>
               </div>
             </div>
 
-            <div className="card shadow-sm border-0 bg-light mt-3">
-              <div className="card-body">
-                <h6 className="card-title">Need Help?</h6>
-                <p className="small text-muted">
+            <div className={`card shadow-sm border-0 mt-3 ${isDarkMode ? 'bg-secondary' : 'bg-light'}`}>
+              <div className={`card-body ${isDarkMode ? 'text-light' : ''}`}>
+                <h6 className={`card-title ${isDarkMode ? 'text-light' : ''}`}>Need Help?</h6>
+                <p className={`small ${isDarkMode ? 'text-light' : 'text-muted'}`}>
                   Contact our support team if you need any assistance with adding products to your inventory.
                 </p>
                 <a href="/" className="btn btn-outline-primary btn-sm">Contact Support</a>

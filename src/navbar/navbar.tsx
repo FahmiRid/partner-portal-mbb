@@ -21,7 +21,8 @@ import {
   faUsers,
   faBars,
   faSun,
-  faMoon
+  faMoon,
+  faCartShopping
 } from '@fortawesome/free-solid-svg-icons';
 import './navbar.scss'
 
@@ -64,8 +65,9 @@ const OffcanvasNavbar: React.FC<OffcanvasNavbarProps> = ({
         { id: 33, title: 'Manage Order', link: '#', icon: '' },
       ],
     },
-    { id: 4, title: 'About', link: '#', icon: faInfoCircle },
-    { id: 5, title: 'Contact', link: '#', icon: faPhone },
+    { id: 4, title: 'Catalog', link: '#', icon: faCartShopping },
+    { id: 5, title: 'About', link: '#', icon: faInfoCircle },
+    { id: 6, title: 'Contact', link: '#', icon: faPhone },
   ];
 
   // Dynamic styles based on theme
@@ -101,32 +103,6 @@ const OffcanvasNavbar: React.FC<OffcanvasNavbarProps> = ({
           >
             <FontAwesomeIcon icon={faBars} size="lg" />
           </Button>
-          
-          {/* <Form className="d-flex mx-auto" style={{ maxWidth: '500px', width: '100%' }} onSubmit={handleSearch}>
-            <InputGroup>
-              <Form.Control
-                type="search"
-                placeholder="Search..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="rounded-pill"
-                style={{ 
-                  background: 'rgba(255,255,255,0.2)', 
-                  border: 'none',
-                  color: 'white',
-                  paddingLeft: '15px'
-                }}
-              />
-              <Button 
-                variant="link" 
-                className="position-absolute end-0 z-10 bg-transparent border-0"
-                style={{ color: 'white', zIndex: 10 }}
-                type="submit"
-              >
-                <FontAwesomeIcon icon={faSearch} />
-              </Button>
-            </InputGroup>
-          </Form> */}
           
           <div className="d-flex align-items-center gap-4">
             {/* Dark Mode Toggle Button */}

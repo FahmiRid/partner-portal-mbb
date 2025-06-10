@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import './styles/stockList.scss';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, ArrowUpDown, Pencil, Trash } from 'lucide-react';
 import { ppBadgeBlue, ppBadgeGreen, ppBadgeYellow, ppBtnWithoutBg, ppH1Custom, ppMediumMuteText, ppSmallMuteText, ppTableLight } from '../stylesStore/stylesGlobal';
 import NotFoundPage from '../heroSection/notFoundPage';
-import { Product, fetchProducts } from '../hooks/useStock';
+import { fetchProducts } from '../hooks/useStock';
 import { useDeleteProduct } from '../hooks/useDeleteStock';
 import Pagination from '../heroSection/pagination';
 import { usePagination } from '../hooks/usePagination';
@@ -25,6 +25,9 @@ export default function Stock() {
     const { recentActivities, addActivity, clearAllActivities } = useActivityTracker();
 
     const deleteProductMutation = useDeleteProduct();
+
+    // Detect current theme
+    const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 
     const {
         data: products = [],
@@ -115,13 +118,13 @@ export default function Stock() {
     }
 
     return (
-        <div className="container-fluid py-4 bg-light">
+        <div className={`container-fluid py-4 ${isDarkMode ? 'bg-dark' : 'bg-light'}`}>
             <div className="container">
                 {/* Header section */}
                 <div className="row mb-4">
                     <div className="col">
-                        <h1 className={ppH1Custom}>Stock List</h1>
-                        <p className={ppMediumMuteText}>Manage and organize your stock unit</p>
+                        <h1 className={`${ppH1Custom} ${isDarkMode ? 'text-white' : ''}`}>Stock List</h1>
+                        <p className={`${ppMediumMuteText} ${isDarkMode ? 'text-light' : ''}`}>Manage and organize your stock unit</p>
                     </div>
                 </div>
 
@@ -129,18 +132,18 @@ export default function Stock() {
                 <div className="row mb-4">
                     <div className="col-md-6">
                         <div className="input-group">
-                            <span className="input-group-text bg-white border-end-0 rounded-start-4">
-                                <Search size={18} className="text-muted" />
+                            <span className={`input-group-text border-end-0 rounded-start-4 ${isDarkMode ? 'bg-dark text-light border-secondary' : 'bg-white'}`}>
+                                <Search size={18} className={isDarkMode ? 'text-light' : 'text-muted'} />
                             </span>
                             <input
                                 type="text"
-                                className="form-control border-start-0 shadow-none rounded-end-4"
+                                className={`form-control border-start-0 shadow-none rounded-end-4 ${isDarkMode ? 'bg-dark text-light border-secondary' : ''}`}
                                 placeholder="Search by name, quantity, SKU..."
                                 value={searchTerm}
                                 onChange={handleSearch}
                             />
                         </div>
-                        <div className={ppSmallMuteText}>
+                        <div className={`${ppSmallMuteText}`}>
                             Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredProducts.length)} of {filteredProducts.length} products
                         </div>
                     </div>
@@ -166,46 +169,46 @@ export default function Stock() {
                 />
 
                 {/* Product table */}
-                <div className="card shadow-sm border-0 mb-4">
+                <div className={`card shadow-sm border-0 mb-4 `}>
                     <div className="card-body p-0">
                         <div className="table-responsive">
-                            <table className="table table-hover mb-0">
-                                <thead className={ppTableLight}>
+                            <table className={`table table-hover mb-0`}>
+                                <thead className={`${ppTableLight} ${isDarkMode ? 'table-dark' : ''}`}>
                                     <tr>
                                         <th scope="col" className="text-center py-3" style={{ width: '5%' }}>
                                             <div className="d-flex align-items-center justify-content-center">
                                                 #
-                                                <ArrowUpDown size={14} className="ms-1 text-muted" />
+                                                <ArrowUpDown size={14} className={`ms-1`} />
                                             </div>
                                         </th>
                                         <th scope="col" className="py-3" style={{ width: '30%' }}>
                                             <div className="d-flex align-items-center">
                                                 Item Name
-                                                <ArrowUpDown size={14} className="ms-1 text-muted" />
+                                                <ArrowUpDown size={14} className={`ms-1`} />
                                             </div>
                                         </th>
                                         <th scope="col" className="text-center py-3" style={{ width: '15%' }}>
                                             <div className="d-flex align-items-center justify-content-center">
                                                 Quantity
-                                                <ArrowUpDown size={14} className="ms-1 text-muted" />
+                                                <ArrowUpDown size={14} className={`ms-1`} />
                                             </div>
                                         </th>
                                         <th scope="col" className="text-center py-3" style={{ width: '20%' }}>
                                             <div className="d-flex align-items-center justify-content-center">
                                                 Price unit (RM)
-                                                <ArrowUpDown size={14} className="ms-1 text-muted" />
+                                                <ArrowUpDown size={14} className={`ms-1`} />
                                             </div>
                                         </th>
                                         <th scope="col" className="text-center py-3" style={{ width: '20%' }}>
                                             <div className="d-flex align-items-center justify-content-center">
                                                 Total Price (RM)
-                                                <ArrowUpDown size={14} className="ms-1 text-muted" />
+                                                <ArrowUpDown size={14} className={`ms-1`} />
                                             </div>
                                         </th>
                                         <th scope="col" className="text-center py-3" style={{ width: '15%' }}>
                                             <div className="d-flex align-items-center justify-content-center">
                                                 SKU
-                                                <ArrowUpDown size={14} className="ms-1 text-muted" />
+                                                <ArrowUpDown size={14} className={`ms-1`} />
                                             </div>
                                         </th>
                                         <th scope="col" className="text-end py-3" style={{ width: '15%' }}>
@@ -221,7 +224,7 @@ export default function Stock() {
                                                 className="cursor-move"
                                             >
                                                 <td className="text-center align-middle">
-                                                    <span className="badge bg-light text-dark rounded-pill">
+                                                    <span className={`badge rounded-pill ${isDarkMode ? 'bg-secondary text-light' : 'bg-light text-dark'}`}>
                                                         {indexOfFirstRecord + index + 1}
                                                     </span>
                                                 </td>
@@ -230,7 +233,7 @@ export default function Stock() {
                                                 </td>
                                                 <td className="text-center align-middle">
                                                     {product.quantity < 5 ? (
-                                                        <span className="badge bg-danger text-dark rounded-pill">
+                                                        <span className="badge bg-danger text-white rounded-pill">
                                                             {product.quantity} (Low Stock)
                                                         </span>
                                                     ) : (

@@ -19,6 +19,7 @@
     "axios": "^1.9.0",
     "body-parser": "^2.2.0",
     "bootstrap": "^5.3.5",
+    "bootstrap-icons": "^1.13.1",
     "chart.js": "^4.4.9",
     "express": "^4.17.1",
     "lucide-react": "^0.508.0",

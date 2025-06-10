@@ -18,7 +18,7 @@ export default function ProductList() {
   const recordsPerPage = 10;
   const [sortColumn, setSortColumn] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
-
+  const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
   const deleteProductMutation = useDeleteProduct();
 
   const queryClient = useQueryClient();
@@ -133,12 +133,12 @@ export default function ProductList() {
   }
 
   return (
-    <div className="container-fluid py-4 bg-light">
+    <div className={`container-fluid py-4 ${isDarkMode ? 'bg-dark' : 'bg-light'}`}>
       <div className="container">
         {/* Header section */}
         <div className="row mb-4">
           <div className="col">
-            <h1 className={ppH1Custom}>Product List</h1>
+            <h1 className={`${ppH1Custom} ${isDarkMode ? 'text-white' : ''}`}>Product List</h1>
             <p className={ppMediumMuteText}>Manage and organize your stock unit</p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function ProductList() {
         <div className="row mb-4">
           <div className="col-md-6">
             <div className="input-group">
-              <span className="input-group-text bg-white border-end-0 rounded-start-4">
+              <span className={`input-group-text border-end-0 rounded-start-4 ${isDarkMode ? 'bg-dark text-light border-secondary' : 'bg-white'}`}>
                 <Search size={18} className="text-muted" />
               </span>
               <input
@@ -175,7 +175,7 @@ export default function ProductList() {
           <div className="card-body p-0">
             <div className="table-responsive">
               <table className="table table-hover mb-0">
-                <thead className={ppTableLight}>
+                <thead className={`${ppTableLight} ${isDarkMode ? 'table-dark' : ''}`}>
                   <tr>
                     <th scope="col" className="text-center py-3" style={{ width: '5%' }}>
                       <div className="d-flex align-items-center justify-content-center">
@@ -224,7 +224,7 @@ export default function ProductList() {
                       <tr
                         key={product.id}>
                         <td className="text-center align-middle">
-                          <span className="badge bg-light text-dark rounded-pill">
+                          <span className={`badge rounded-pill ${isDarkMode ? 'bg-secondary text-light' : 'bg-light text-dark'}`}>
                             {indexOfFirstRecord + index + 1}
                           </span>
                         </td>
