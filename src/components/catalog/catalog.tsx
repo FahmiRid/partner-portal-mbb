@@ -1,33 +1,30 @@
 import React from 'react'
-import CardSwap, { Card } from '../../blocks/Components/CardSwap/CardSwap';
 import ChromaGrid from '../../blocks/Components/ChromaGrid/ChromaGrid';
-import InfiniteMenu from '../../blocks/Components/InfiniteMenu/InfiniteMenu';
-import { byfashe } from '../../img/usage';
-import { packageD } from '../../img/usage';
+
 export default function Catalog() {
     const items = [
         {
-            image: require('../../img/PackageD.png'),
+            image: require('../../img/packageA.jpeg'),
             title: "Package A",
-            subtitle: "byFashé Lovely Bits",
+            subtitle: "Sales: RM 11.90",
             handle: "@byFashee",
             borderColor: "#3B82F6",
             gradient: "linear-gradient(145deg, #3B82F6, #000)",
             url: ""
         },
         {
-            image: require('../../img/PackageD.png'),
+            image: require('../../img/packageB.jpeg'),
             title: "Package B",
-            subtitle: "byFashé Lovely Bits",
+            subtitle: "Sales: RM 12.00",
             handle: "@byFashee",
             borderColor: "#10B981",
             gradient: "linear-gradient(180deg, #10B981, #000)",
             url: ""
         },
         {
-            image: require('../../img/PackageD.png'),
+            image: require('../../img/packageC.jpeg'),
             title: "Package C",
-            subtitle: "byFashé Lovely Bits",
+            subtitle: "Sales: RM 12.50",
             handle: "@byFashee",
             borderColor: "#10B981",
             gradient: "linear-gradient(180deg, #10B981, #000)",
@@ -36,7 +33,16 @@ export default function Catalog() {
         {
             image: require('../../img/PackageD.png'),
             title: "Package D",
-            subtitle: "byFashé Lovely Bits",
+            subtitle: "Sales: RM 8.90",
+            handle: "@byFashee",
+            borderColor: "#10B981",
+            gradient: "linear-gradient(180deg, #10B981, #000)",
+            url: ""
+        },
+        {
+            image: require('../../img/mensSet.jpeg'),
+            title: "Package D",
+            subtitle: "Sales: Rm10.90",
             handle: "@byFashee",
             borderColor: "#10B981",
             gradient: "linear-gradient(180deg, #10B981, #000)",
