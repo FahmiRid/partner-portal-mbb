@@ -11,6 +11,7 @@ import Stock from './product/stock';
 import AddStock from './product/addStock';
 import EditStock from './product/editStock';
 import EditProduct from './product/editProduct';
+import Catalog from './components/catalog/catalog';
 import { Toaster } from 'sonner'
 
 function App() {
@@ -107,6 +108,7 @@ function App() {
           <Route path="/add-product" element={<AddProduct />} />
           <Route path="/edit-stock/:id" element={<EditStock />} />
           <Route path="/edit-product/:productId" element={<EditProduct />} />
+          <Route path="/catalog" element={<Catalog />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

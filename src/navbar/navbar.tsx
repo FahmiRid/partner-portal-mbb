@@ -65,7 +65,7 @@ const OffcanvasNavbar: React.FC<OffcanvasNavbarProps> = ({
         { id: 33, title: 'Manage Order', link: '#', icon: '' },
       ],
     },
-    { id: 4, title: 'Catalog', link: '#', icon: faCartShopping },
+    { id: 4, title: 'Catalog', link: '/catalog', icon: faCartShopping },
     { id: 5, title: 'About', link: '#', icon: faInfoCircle },
     { id: 6, title: 'Contact', link: '#', icon: faPhone },
   ];
