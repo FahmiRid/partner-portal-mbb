@@ -6,6 +6,10 @@ export const secondBlock = 'secondBlock';
 export const appTitle ='appTitle';
 export const usageWarning = 'usageWarning';
 
+//positioning 
+
+export const ppHomeCustom = 'ppHome-custom' 
+
 /* ==========Bootstrap css================*/
 
 //badge variant color

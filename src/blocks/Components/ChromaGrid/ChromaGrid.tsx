@@ -36,9 +36,9 @@ export const ChromaGrid: React.FC<ChromaGridProps> = ({
   radius = 300,
   columns = 3,
   rows = 2,
-  damping = 0.45,
-  fadeOut = 0.6,
-  ease = "power3.out",
+  // damping = 0.45,
+  // fadeOut = 0.6,
+  // ease = "power3.out",
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const fadeRef = useRef<HTMLDivElement>(null);
@@ -115,33 +115,33 @@ export const ChromaGrid: React.FC<ChromaGridProps> = ({
     setY.current(pos.current.y);
   }, []);
 
-  const moveTo = (x: number, y: number) => {
-    gsap.to(pos.current, {
-      x,
-      y,
-      duration: damping,
-      ease,
-      onUpdate: () => {
-        setX.current?.(pos.current.x);
-        setY.current?.(pos.current.y);
-      },
-      overwrite: true,
-    });
-  };
+  // const moveTo = (x: number, y: number) => {
+  //   gsap.to(pos.current, {
+  //     x,
+  //     y,
+  //     duration: damping,
+  //     ease,
+  //     onUpdate: () => {
+  //       setX.current?.(pos.current.x);
+  //       setY.current?.(pos.current.y);
+  //     },
+  //     overwrite: true,
+  //   });
+  // };
 
-  const handleMove = (e: React.PointerEvent) => {
-    const r = rootRef.current!.getBoundingClientRect();
-    moveTo(e.clientX - r.left, e.clientY - r.top);
-    gsap.to(fadeRef.current, { opacity: 0, duration: 0.25, overwrite: true });
-  };
+  // const handleMove = (e: React.PointerEvent) => {
+  //   const r = rootRef.current!.getBoundingClientRect();
+  //   moveTo(e.clientX - r.left, e.clientY - r.top);
+  //   gsap.to(fadeRef.current, { opacity: 0, duration: 0.25, overwrite: true });
+  // };
 
-  const handleLeave = () => {
-    gsap.to(fadeRef.current, {
-      opacity: 1,
-      duration: fadeOut,
-      overwrite: true,
-    });
-  };
+  // const handleLeave = () => {
+  //   gsap.to(fadeRef.current, {
+  //     opacity: 1,
+  //     duration: fadeOut,
+  //     overwrite: true,
+  //   });
+  // };
 
   const handleCardClick = (url?: string) => {
     if (url) {
@@ -169,8 +169,8 @@ export const ChromaGrid: React.FC<ChromaGridProps> = ({
           "--rows": rows,
         } as React.CSSProperties
       }
-      onPointerMove={handleMove}
-      onPointerLeave={handleLeave}
+      // onPointerMove={handleMove}
+      // onPointerLeave={handleLeave}
     >
       {data.map((c, i) => (
         <article

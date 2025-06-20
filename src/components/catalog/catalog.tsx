@@ -1,5 +1,6 @@
 import React from 'react'
 import ChromaGrid from '../../blocks/Components/ChromaGrid/ChromaGrid';
+import { ppHomeCustom } from '../../stylesStore/stylesGlobal';
 
 export default function Catalog() {
     const items = [
@@ -48,10 +49,20 @@ export default function Catalog() {
             gradient: "linear-gradient(180deg, #10B981, #000)",
             url: ""
         },
+        {
+            image: require('../../img/glowkit.png'),
+            title: "Glow Kit ",
+            subtitle: "Sales: Rm15.00",
+            handle: "@byFashee",
+            borderColor: "#10B981",
+            gradient: "linear-gradient(180deg, #10B981, #000)",
+            url: ""
+        },
         
     ];
     return (
         <div>
+            <h1 className={`container-fluid ${ppHomeCustom}`}>Catalog Product</h1>
             <ChromaGrid
                 items={items}
                 radius={300}

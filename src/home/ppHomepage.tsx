@@ -3,6 +3,7 @@ import './ppHomepage.scss';
 import { Chart, registerables } from 'chart.js';
 import { useStockAnalytics } from '../hooks/useDataDashboard';
 import { QuickAction } from './components/utils';
+import { ppHomeCustom } from '../stylesStore/stylesGlobal';
 
 export default function PPHomepage() {
     // Register Chart.js components
@@ -231,7 +232,7 @@ export default function PPHomepage() {
 
     return (
         <>
-            <div className="container-fluid px-4 py-4">
+            <div className={`container-fluid  py-4 ${ppHomeCustom}`}>
                 {/* Header with filters */}
                 <div className="row mb-4 align-items-center">
                     <div className="col-md-6">
